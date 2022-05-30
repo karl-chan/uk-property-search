@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "uk-property-search-app",
+			"path": "uk-property-search-app"
+		},
+		{
+			"name": "uk-property-search-data",
+			"path": "uk-property-search-data"
+		}
+	],
+	"settings": {
+		"files.watcherExclude": {
+			"**/target": true
+		}
+	}
+}
