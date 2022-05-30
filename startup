@@ -1,0 +1,2 @@
+ttab 'cd uk-property-search-app && npx quasar dev'
+ttab 'cd uk-property-search-data && cargo run --bin server'

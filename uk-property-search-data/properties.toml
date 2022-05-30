@@ -1,0 +1,9 @@
+[db]
+mongo.uri = "mongodb+srv://uk-property-search:5HUA2zBnKnlUVhpt@cluster0.4kpiz.mongodb.net"
+mongo.name = "uk-property-search"
+
+[http]
+max.parallel.connections = 50
+
+[server]
+default.port = 3000
