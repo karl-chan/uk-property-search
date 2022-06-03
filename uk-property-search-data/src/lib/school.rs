@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct School {
     pub id: i64,
@@ -8,9 +8,10 @@ pub struct School {
     pub postcode: String,
     pub coordinates: (f64, f64),
     pub rating: u8,
-    pub inspection_date: Option<i64>, // unix milliseconds
+    pub inspection_date_ms: Option<i64>, // unix milliseconds
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Rating {
     Unknown = 0,
     Outstanding = 1,
