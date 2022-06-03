@@ -1,6 +1,7 @@
 use crate::lib::{
-    property::{PropertyAction, PropertyStats, PropertyStatsProvider},
-    util::{globals::Globals, http::Http, stats::Stats},
+    math::stats::Stats,
+    property::property::{PropertyAction, PropertyStats, PropertyStatsProvider},
+    util::{globals::Globals, http::Http},
 };
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
@@ -235,7 +236,7 @@ impl PropertyStatsProvider for Rightmove {
 #[cfg(test)]
 mod tests {
     use super::{PropertyAction, Rightmove};
-    use crate::lib::{property::PropertyStatsProvider, util::globals::Globals};
+    use crate::lib::{property::property::PropertyStatsProvider, util::globals::Globals};
     use more_asserts::{assert_gt, assert_lt};
 
     #[tokio::test]
