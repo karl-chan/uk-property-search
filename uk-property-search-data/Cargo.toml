@@ -5,14 +5,23 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
+async-trait = "0.1.53"
 chrono = "0.4.19"
 clap = { version = "3.1.18", features = ["derive"] }
 config = "0.13.1"
 futures = "0.3.21"
 itertools = "0.10.3"
+lazy_static = "1.4.0"
+log = "0.4.17"
 mongodb = { version = "2.2.1", features = ["bson-chrono-0_4"] }
 polars = { version = "0.21.1"}
-reqwest = "0.11.10"
+regex = "1.5.6"
+reqwest = { version = "0.11.10", features = ["json", "gzip", "brotli", "deflate"] }
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = { version = "1.0.137", features = ["derive"] }
+simple_logger = "2.1.0"
+statrs = "0.15.0"
 tokio = { version = "1.18.2", features = ["sync"] }
+
+[dev-dependencies]
+more-asserts = "0.3.0"

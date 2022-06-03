@@ -84,7 +84,7 @@ export default defineComponent({
     const schools: ComputedRef<School[]> = computed(
       () => {
         const inRating = (school: School) => school.rating !== undefined && ratings.value.includes(school.rating)
-        const afterCutoff = (school: School) => date.getDateDiff(school.inspectionDate ?? new Date().getTime(), cutoffDate.value, 'seconds') > 0
+        const afterCutoff = (school: School) => date.getDateDiff(school.inspectionDateMs ?? new Date().getTime(), cutoffDate.value, 'seconds') > 0
         return store.state.schools.schools
           .filter(inRating)
           .filter(afterCutoff)
@@ -112,7 +112,7 @@ export default defineComponent({
             new L.CircleMarker(
               { lat: school.coordinates[1], lng: school.coordinates[0] },
               { color: getColor(school.rating), radius: 5 }
-            ).bindTooltip(`${school.name} <br> (${date.formatDate(school.inspectionDate, 'YYYY-MM-DD') ?? 'Unknown'})`)
+            ).bindTooltip(`${school.name} <br> (${date.formatDate(school.inspectionDateMs, 'YYYY-MM-DD') ?? 'Unknown'})`)
           ]
           : []
       })

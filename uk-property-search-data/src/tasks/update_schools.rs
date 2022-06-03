@@ -56,7 +56,7 @@ pub async fn update_schools(globals: &Globals) -> Result<()> {
             postcode: postcode.unwrap().into(),
             coordinates: (longitude.unwrap(), latitude.unwrap()),
             rating: parse_rating_string(rating_string) as u8,
-            inspection_date: parse_inspection_date(inspection_date),
+            inspection_date_ms: parse_inspection_date(inspection_date),
         },
     )
     .collect();

@@ -8,7 +8,7 @@ use rocket::fs::FileServer;
 use rocket::serde::json::Json;
 use rocket::{Config, State};
 use std::env;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 
 #[macro_use]
 extern crate rocket;

@@ -11,5 +11,5 @@ export interface School {
   postcode?: string;
   coordinates?: [number, number];
   rating?: Rating;
-  inspectionDate?: number; // unix milliseconds
+  inspectionDateMs?: number; // unix milliseconds
 }

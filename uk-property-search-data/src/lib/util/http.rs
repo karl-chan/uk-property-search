@@ -1,9 +1,10 @@
 use super::globals::Globals;
 use reqwest::{
-    header::{HeaderMap, ACCEPT_ENCODING, USER_AGENT},
+    header::{HeaderMap, USER_AGENT},
     redirect::Policy,
     Client, IntoUrl,
 };
+use std::fmt::Debug;
 use tokio::sync::Semaphore;
 
 pub struct Http {
@@ -27,7 +28,6 @@ impl Http {
         let default_headers = {
             let mut headers = HeaderMap::new();
             headers.insert(USER_AGENT, "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36".parse().unwrap());
-            headers.insert(ACCEPT_ENCODING, "gzip".parse().unwrap());
             headers
         };
 
@@ -49,11 +49,14 @@ impl Http {
         }
     }
 
-    pub async fn get<U: IntoUrl>(&self, url: U) -> Result<reqwest::Response, reqwest::Error> {
+    pub async fn get<U: IntoUrl + Debug>(
+        &self,
+        url: U,
+    ) -> Result<reqwest::Response, reqwest::Error> {
         self.get_with_options(url, &[], true).await
     }
 
-    pub async fn get_with_options<U: IntoUrl>(
+    pub async fn get_with_options<U: IntoUrl + Debug>(
         &self,
         url: U,
         query: &[(&str, &str)],
@@ -73,12 +76,10 @@ impl Http {
 
 #[cfg(test)]
 mod tests {
+    use super::{Http, HttpOptions};
+    use crate::lib::util::globals::Globals;
     use futures::future::join_all;
     use reqwest::StatusCode;
-
-    use crate::lib::util::globals::Globals;
-
-    use super::{Http, HttpOptions};
 
     #[tokio::test]
     async fn test_get() {
@@ -86,6 +87,7 @@ mod tests {
         let http = Http::new(&globals, None);
         let response = http.get("https://www.duckduckgo.com").await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+        assert!(response.text().await.unwrap().contains("<!DOCTYPE html>"))
     }
 
     #[tokio::test]
@@ -107,6 +109,7 @@ mod tests {
         for task in tasks {
             let response = task.unwrap();
             assert_eq!(response.status(), StatusCode::OK);
+            assert!(response.text().await.unwrap().contains("<!DOCTYPE html>"))
         }
     }
 
