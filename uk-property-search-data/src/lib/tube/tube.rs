@@ -7,6 +7,7 @@ pub struct TubeStation {
     #[serde(rename = "_id")]
     pub id: String, // naptanId
     pub name: String,
+    pub postcode: Option<String>,
     pub coordinates: (f64, f64), // (longitude, latitude)
     pub lines: HashSet<String>,  // tube lines that serve the station
 }

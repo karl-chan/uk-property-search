@@ -8,6 +8,7 @@ pub struct Cli {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 pub enum CliTask {
+    UpdateProperty,
     UpdateSchools,
     UpdateTube,
 }
