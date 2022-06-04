@@ -3,7 +3,7 @@ use crate::lib::{
         estate_agents::rightmove::Rightmove,
         property::{PropertyAction, PropertyStatsProvider, PropertySummary},
     },
-    tube::tube::TubeStation,
+    tube::TubeStation,
     util::globals::Globals,
     util::lang::VecResultExt,
 };
@@ -19,7 +19,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
     let tube_stations: Vec<TubeStation> = results.into_iter().map(|r| r.unwrap()).collect();
     let station_postcodes: Vec<String> = tube_stations
         .iter()
-        .flat_map(|station| station.postcode.to_owned().into_iter())
+        .map(|station| station.postcode.to_owned())
         .collect_vec();
     let station_coordinates: Vec<(f64, f64)> = tube_stations
         .iter()

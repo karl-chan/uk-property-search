@@ -1,5 +1,5 @@
 use super::properties::Properties;
-use crate::lib::{property::property::PropertySummary, school::School, tube::tube::TubeStation};
+use crate::lib::{property::property::PropertySummary, school::School, tube::TubeStation};
 use mongodb::{options::ClientOptions, Client, Collection, Database};
 
 pub struct Db {
