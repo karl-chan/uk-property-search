@@ -19,7 +19,7 @@ pub struct Rightmove {
 #[derive(Debug, PartialEq)]
 pub struct RightmoveProperty {
     id: u32,
-    coordinates: (f64, f64),
+    coordinates: (f64, f64), // (longitude, latitude)
     price: u32,
     square_feet: Option<i32>,
     post_date: DateTime<Utc>,
