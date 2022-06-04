@@ -1,7 +1,13 @@
+use std::iter;
+
 use crate::lib::{
     math::stats::Stats,
     property::property::{PropertyAction, PropertyStats, PropertyStatsProvider},
-    util::{globals::Globals, http::Http},
+    util::{
+        ext::{DecodeJsonResponseExt, VecResultExt},
+        globals::Globals,
+        http::Http,
+    },
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -9,6 +15,7 @@ use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +62,7 @@ impl Rightmove {
             "https://www.rightmove.co.uk/typeAhead/uknostreet/{}",
             &delimited_postcode
         );
-        let res: LocationIdentifierResponse = self.http.get(url).await?.json().await?;
+        let res: LocationIdentifierResponse = self.http.get(url).await?.json_or_err().await?;
         res.type_ahead_locations
             .first()
             .map(|l| l.location_identifier.clone())
@@ -86,7 +93,7 @@ impl Rightmove {
             id: u32,
             location: LocationResponse,
             price: PriceResponse,
-            display_size: String,
+            display_size: Option<String>,
             first_visible_date: String,
             listing_update: ListingUpdateResponse,
         }
@@ -108,8 +115,8 @@ impl Rightmove {
         #[derive(Debug, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ListingUpdateResponse {
-            listing_update_reason: String,
-            listing_update_date: String,
+            listing_update_reason: Option<String>,
+            listing_update_date: Option<String>,
         }
 
         #[derive(Debug, Serialize, Deserialize)]
@@ -150,7 +157,7 @@ impl Rightmove {
                 .http
                 .get_with_options(url, query, true)
                 .await?
-                .json()
+                .json_or_err()
                 .await?;
             Ok(response)
         }
@@ -167,39 +174,40 @@ impl Rightmove {
         )
         .await;
 
-        fn parse_square_feet(s: &str) -> Option<i32> {
+        fn parse_square_feet(maybe_display_size: Option<String>) -> Option<i32> {
             lazy_static! {
                 static ref RE: Regex = Regex::new(r"(.*) sq. ft.").unwrap();
             }
-            RE.captures(s)
-                .map(|caps| caps.get(1).unwrap())
-                .map(|m| m.as_str().replace(",", "").parse::<i32>().unwrap())
+            maybe_display_size.and_then(|display_size| {
+                RE.captures(&display_size)
+                    .map(|caps| caps.get(1).unwrap())
+                    .map(|m| m.as_str().replace(",", "").parse::<i32>().unwrap())
+            })
         }
 
         fn parse_date(s: &str) -> DateTime<Utc> {
             DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
         }
 
-        let properties: Vec<RightmoveProperty> = response
-            .properties
-            .into_iter()
-            .chain(
-                more_responses
-                    .into_iter()
-                    .flat_map(|r| r.unwrap().properties.into_iter()),
-            )
+        let properties: Vec<RightmoveProperty> = iter::once(response)
+            .chain(more_responses.unwrap_all().into_iter())
+            .flat_map(|r| r.properties.into_iter())
             .map(|property| RightmoveProperty {
                 id: property.id,
                 coordinates: (property.location.longitude, property.location.latitude),
                 price: property.price.amount,
-                square_feet: parse_square_feet(&property.display_size),
+                square_feet: parse_square_feet(property.display_size),
                 post_date: parse_date(&property.first_visible_date),
-                reduced_date: match property.listing_update.listing_update_reason.as_str() {
-                    "price_reduced" => {
-                        Some(parse_date(&property.listing_update.listing_update_date))
-                    }
-                    _ => None,
-                },
+                reduced_date: property
+                    .listing_update
+                    .listing_update_reason
+                    .and_then(|reason| match reason.as_str() {
+                        "price_reduced" => property
+                            .listing_update
+                            .listing_update_date
+                            .map(|date| parse_date(&date)),
+                        _ => None,
+                    }),
             })
             .collect();
         Ok(properties)
