@@ -20,9 +20,17 @@ pub struct PropertyStats {
 pub trait PropertyStatsProvider {
     async fn get_stats(
         &self,
-        location_identifier: &str,
+        postcode: String,
         action: PropertyAction,
         num_beds: u32,
         radius: f64,
     ) -> Result<PropertyStats>;
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertySummary {
+    pub postcode: String,
+    pub coordinates: (f64, f64), // (long, lat)
+    pub stats: PropertyStats,
 }

@@ -1,4 +1,5 @@
 use super::globals::Globals;
+use log::debug;
 use reqwest::{
     header::{HeaderMap, USER_AGENT},
     redirect::Policy,
@@ -62,12 +63,16 @@ impl Http {
         query: &[(&str, &str)],
         follow_redirects: bool,
     ) -> Result<reqwest::Response, reqwest::Error> {
-        let permit = self.semaphore.acquire();
+        let permit = self.semaphore.acquire().await.unwrap();
         let client = if follow_redirects {
             &self.client
         } else {
             &self.no_redirect_client
         };
+        debug!(
+            "Sending GET request to url: [{:?}] with query: [{:?}] and follow redirects: [{:?}]",
+            &url, query, follow_redirects
+        );
         let response = client.get(url).query(query).send().await;
         drop(permit);
         response
@@ -79,6 +84,7 @@ mod tests {
     use super::{Http, HttpOptions};
     use crate::lib::util::globals::Globals;
     use futures::future::join_all;
+    use itertools::Itertools;
     use reqwest::StatusCode;
 
     #[tokio::test]
@@ -102,7 +108,7 @@ mod tests {
         let futures = (0..20)
             .into_iter()
             .map(|_| http.get("https://www.duckduckgo.com"))
-            .collect::<Vec<_>>();
+            .collect_vec();
         let tasks = join_all(futures).await;
 
         assert_eq!(tasks.len(), 20);

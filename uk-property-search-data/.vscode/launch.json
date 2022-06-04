@@ -1,0 +1,47 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "update-property",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=uk-property-search-data",
+          "--package=uk-property-search-data",
+        ],
+        "filter": {
+          "name": "uk-property-search-data",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "-t",
+        "update-property"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "server",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=server",
+          "--package=uk-property-search-data"
+        ],
+        "filter": {
+          "name": "server",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+  ]
+}

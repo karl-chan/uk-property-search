@@ -1,6 +1,6 @@
 use super::properties::Properties;
-use crate::lib::{school::School, tube::tube::TubeStation};
-use mongodb::{options::ClientOptions, Client, Database};
+use crate::lib::{property::property::PropertySummary, school::School, tube::TubeStation};
+use mongodb::{options::ClientOptions, Client, Collection, Database};
 
 pub struct Db {
     pub client: Client,
@@ -19,11 +19,15 @@ impl Db {
         Db { client, database }
     }
 
-    pub fn schools(&self) -> mongodb::Collection<School> {
+    pub fn property(&self) -> Collection<PropertySummary> {
+        self.database.collection("property")
+    }
+
+    pub fn schools(&self) -> Collection<School> {
         self.database.collection("schools")
     }
 
-    pub fn tube(&self) -> mongodb::Collection<TubeStation> {
+    pub fn tube(&self) -> Collection<TubeStation> {
         self.database.collection("tube")
     }
 }

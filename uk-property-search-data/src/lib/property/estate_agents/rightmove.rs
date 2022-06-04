@@ -3,7 +3,7 @@ use crate::lib::{
     property::property::{PropertyAction, PropertyStats, PropertyStatsProvider},
     util::{globals::Globals, http::Http},
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
@@ -33,7 +33,7 @@ impl Rightmove {
         }
     }
 
-    async fn get_location_identifier(&self, postcode: &str) -> Result<String> {
+    async fn get_location_identifier(&self, postcode: String) -> Result<String> {
         #[derive(Debug, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct LocationIdentifierResponse {
@@ -141,7 +141,6 @@ impl Rightmove {
                     match action {
                         PropertyAction::Buy => "BUY",
                         PropertyAction::Rent => "RENT",
-                        _ => bail!("Disallowed property action: {:?}", action),
                     },
                 ),
                 ("areaSizeUnit", "sqft"),
@@ -164,7 +163,7 @@ impl Rightmove {
                 .map(|index| {
                     search_pagination(&self, &location_identifier, action, num_beds, radius, index)
                 })
-                .collect::<Vec<_>>(),
+                .collect_vec(),
         )
         .await;
 
@@ -211,7 +210,7 @@ impl Rightmove {
 impl PropertyStatsProvider for Rightmove {
     async fn get_stats(
         &self,
-        postcode: &str,
+        postcode: String,
         action: PropertyAction,
         num_beds: u32,
         radius: f64,
@@ -220,11 +219,11 @@ impl PropertyStatsProvider for Rightmove {
         let properties = self
             .search(&location_identifier, action, num_beds, radius)
             .await?;
-        let prices = properties.iter().map(|p| p.price).collect::<Vec<_>>();
+        let prices = properties.iter().map(|p| p.price).collect_vec();
         let post_dates_ms = properties
             .iter()
             .map(|p| p.post_date.timestamp_millis() as f64)
-            .collect::<Vec<_>>();
+            .collect_vec();
 
         Ok(PropertyStats {
             price: Stats::from_vec(&prices),
@@ -243,7 +242,10 @@ mod tests {
     async fn test_get_location_identifier() {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
-        let location_identifier = rightmove.get_location_identifier("SW1A 2AA").await.unwrap();
+        let location_identifier = rightmove
+            .get_location_identifier("SW1A 2AA".to_owned())
+            .await
+            .unwrap();
         assert_eq!(location_identifier, "REGION^91989");
     }
 
@@ -263,7 +265,7 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let stats = rightmove
-            .get_stats("SW1A 2AA", PropertyAction::Buy, 2, 0.0)
+            .get_stats("SW1A 2AA".to_owned(), PropertyAction::Buy, 2, 0.0)
             .await
             .unwrap();
         assert_lt!(stats.price.min, 1_000_000.0);
