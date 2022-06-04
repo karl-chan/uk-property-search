@@ -52,8 +52,8 @@ pub async fn update_schools(globals: &Globals) -> Result<()> {
     .map(
         |(id, name, postcode, longitude, latitude, rating_string, inspection_date)| School {
             id: id.unwrap(),
-            name: name.unwrap().into(),
-            postcode: postcode.unwrap().into(),
+            name: name.unwrap().to_owned(),
+            postcode: postcode.unwrap().to_owned(),
             coordinates: (longitude.unwrap(), latitude.unwrap()),
             rating: parse_rating_string(rating_string) as u8,
             inspection_date_ms: parse_inspection_date(inspection_date),

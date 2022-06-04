@@ -1,7 +1,6 @@
-use std::sync::Once;
-
 use super::{db::Db, properties::Properties};
 use log::Level;
+use std::sync::Once;
 
 static INIT: Once = Once::new();
 
