@@ -10,7 +10,7 @@ max.retry.count = 3
 level = "info"
 
 [rightmove]
-max.parallel.connections = 10
+max.parallel.connections = 5
 
 [server]
 default.port = 3000
