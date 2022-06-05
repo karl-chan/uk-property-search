@@ -5,5 +5,8 @@ mongo.name = "uk-property-search"
 [http]
 max.parallel.connections = 50
 
+[log]
+level = "info"
+
 [server]
 default.port = 3000
