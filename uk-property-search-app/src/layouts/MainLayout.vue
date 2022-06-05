@@ -1,39 +1,16 @@
-<template>
-  <q-layout view="hHh Lpr lFr">
-    <q-header elevated>
-      <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-        <q-toolbar-title>UK Property Search App</q-toolbar-title>
-      </q-toolbar>
-    </q-header>
+<template lang='pug'>
+q-layout(view='hHh Lpr lFr')
+  q-header(elevated)
+    q-toolbar
+      q-btn(flat dense round icon='menu' aria-label='Menu' @click='toggleLeftDrawer')
+      q-toolbar-title UK Property Search App
+  q-drawer.bg-grey-1(v-model="leftDrawerOpen" show-if-above bordered)
+    q-list
+      q-item-label.text-grey-8(header) Pages
 
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-      class="bg-grey-1"
-    >
-      <q-list>
-        <q-item-label
-          header
-          class="text-grey-8"
-        >
-          Pages
-        </q-item-label>
-      </q-list>
-    </q-drawer>
+  q-page-container
+    router-view
 
-    <q-page-container>
-      <router-view />
-    </q-page-container>
-  </q-layout>
 </template>
 
 <script lang="ts">

@@ -1,5 +1,5 @@
-<template>
-  <div :id="mapId" />
+<template lang='pug'>
+div(:id='mapId')
 </template>
 
 <script lang="ts">
