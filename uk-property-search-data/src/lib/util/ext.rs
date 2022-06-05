@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use futures::StreamExt;
 use itertools::Itertools;
+use mongodb::Collection;
 use reqwest::Response;
 use rocket::serde::DeserializeOwned;
 
@@ -28,5 +30,27 @@ pub trait VecResultExt<T> {
 impl<T> VecResultExt<T> for Vec<Result<T>> {
     fn unwrap_all(self) -> Vec<T> {
         self.into_iter().map(|result| result.unwrap()).collect_vec()
+    }
+}
+
+#[async_trait]
+pub trait MongoCollectionExt<T> {
+    async fn find_to_vec(&self) -> Vec<T>;
+}
+
+#[async_trait]
+impl<T> MongoCollectionExt<T> for Collection<T>
+where
+    T: DeserializeOwned + Unpin + Send + Sync,
+{
+    async fn find_to_vec(&self) -> Vec<T> {
+        self.find(None, None)
+            .await
+            .unwrap()
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .map(|r| r.unwrap())
+            .collect()
     }
 }
