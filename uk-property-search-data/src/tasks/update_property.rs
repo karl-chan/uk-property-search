@@ -1,7 +1,7 @@
 use crate::lib::{
     property::{
         estate_agents::rightmove::Rightmove,
-        property::{PropertyAction, PropertyStatsProvider, PropertySummary},
+        property::{PropertyAction, PropertySummary},
     },
     tube::TubeStation,
     util::ext::VecResultExt,
@@ -9,41 +9,55 @@ use crate::lib::{
 };
 use anyhow::Result;
 use futures::{future::join_all, StreamExt, TryFutureExt};
-use itertools::{iproduct, Itertools};
+use itertools::iproduct;
 use log::info;
 use mongodb::bson::doc;
 
 pub async fn update_property(globals: &Globals) -> Result<()> {
+    #[derive(Clone)]
+    struct StationInfo {
+        station: TubeStation,
+        location_identifier: String,
+    }
+
+    let rightmove = Rightmove::new(&globals);
+
     let results: Vec<core::result::Result<TubeStation, _>> =
         globals.db.tube().find(None, None).await?.collect().await;
     let tube_stations: Vec<TubeStation> = results.into_iter().map(|r| r.unwrap()).collect();
-    let station_name_postcode_coordinate_tuples: Vec<(String, String, (f64, f64))> = tube_stations
-        .iter()
-        .map(|station| {
-            (
-                station.name.to_owned(),
-                station.postcode.to_owned(),
-                station.coordinates,
-            )
-        })
-        .collect_vec();
 
-    let rightmove = Rightmove::new(&globals);
+    let station_infos: Vec<StationInfo> = join_all(tube_stations.into_iter().map(|station| {
+        rightmove
+            .get_location_identifier(station.postcode.to_owned())
+            .map_ok(|location_identifier| StationInfo {
+                station,
+                location_identifier,
+            })
+    }))
+    .await
+    .unwrap_all();
+
     let all_property_summary = join_all(
         iproduct!(
-            station_name_postcode_coordinate_tuples,
+            [&rightmove],
+            station_infos,
             [PropertyAction::Buy, PropertyAction::Rent],
             0..4,
             [0.25]
         )
-        .map(|( (name, postcode, coordinates),  action, num_beds, radius)| {
+        .map(|(rightmove, station_info, action, num_beds, radius)| {
             rightmove
-                .get_stats(postcode.clone(), action, num_beds, radius)
-                .map_ok(move |stats|  {
-                    info!("Got stats for name: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]", &name, &postcode, action, num_beds, radius);
+                .search(station_info.location_identifier, action, num_beds, radius)
+                .map_ok(move |properties| {
+                    let stats = rightmove.to_stats(properties);
+                    info!("Got stats for name: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
+                        station_info.station.name,
+                        station_info.station.postcode,
+                        action, num_beds, radius
+                    );
                     PropertySummary {
-                        postcode,
-                        coordinates,
+                        postcode: station_info.station.postcode,
+                        coordinates: station_info.station.coordinates,
                         stats,
                     }
                 })

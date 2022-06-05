@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use statrs::statistics::{Data, Max, Median, Min, OrderStatistics};
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Stats {
     pub min: f64,

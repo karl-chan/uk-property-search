@@ -1,8 +1,6 @@
-use std::iter;
-
 use crate::lib::{
     math::stats::Stats,
-    property::property::{PropertyAction, PropertyStats, PropertyStatsProvider},
+    property::property::{PropertyAction, PropertyStats},
     util::{
         ext::{DecodeJsonResponseExt, VecResultExt},
         globals::Globals,
@@ -10,14 +8,14 @@ use crate::lib::{
     },
 };
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use log::info;
 use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use std::iter;
 
 pub struct Rightmove {
     http: Http,
@@ -40,7 +38,7 @@ impl Rightmove {
         }
     }
 
-    async fn get_location_identifier(&self, postcode: String) -> Result<String> {
+    pub async fn get_location_identifier(&self, postcode: String) -> Result<String> {
         #[derive(Debug, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct LocationIdentifierResponse {
@@ -52,29 +50,30 @@ impl Rightmove {
             location_identifier: String,
         }
 
-        let delimited_postcode = postcode
-            .chars()
-            .chunks(2)
-            .into_iter()
-            .map(|chunk| chunk.collect::<String>())
-            .join("/");
         let url = format!(
-            "https://www.rightmove.co.uk/typeAhead/uknostreet/{}",
-            &delimited_postcode
+            "https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation={}",
+            &postcode
         );
-        let res: LocationIdentifierResponse = self.http.get(url).await?.json_or_err().await?;
-        res.type_ahead_locations
-            .first()
-            .map(|l| l.location_identifier.clone())
+        let html = self.http.get(url).await?.text().await?;
+        lazy_static! {
+            static ref SELECTOR: Selector = Selector::parse("#locationIdentifier").unwrap();
+        }
+        Html::parse_document(&html)
+            .select(&SELECTOR)
+            .next()
+            .unwrap()
+            .value()
+            .attr("value")
+            .map(|location_identifier| location_identifier.to_owned())
             .ok_or(anyhow!(
                 "Location identifier not found for postcode: {}!",
                 postcode
             ))
     }
 
-    async fn search(
+    pub async fn search(
         &self,
-        location_identifier: &str,
+        location_identifier: String,
         action: PropertyAction,
         num_beds: u32,
         radius: f64,
@@ -212,38 +211,25 @@ impl Rightmove {
             .collect();
         Ok(properties)
     }
-}
 
-#[async_trait]
-impl PropertyStatsProvider for Rightmove {
-    async fn get_stats(
-        &self,
-        postcode: String,
-        action: PropertyAction,
-        num_beds: u32,
-        radius: f64,
-    ) -> Result<PropertyStats> {
-        let location_identifier = self.get_location_identifier(postcode).await?;
-        let properties = self
-            .search(&location_identifier, action, num_beds, radius)
-            .await?;
+    pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
         let prices = properties.iter().map(|p| p.price).collect_vec();
         let post_dates_ms = properties
             .iter()
             .map(|p| p.post_date.timestamp_millis() as f64)
             .collect_vec();
 
-        Ok(PropertyStats {
+        PropertyStats {
             price: Stats::from_vec(&prices),
             post_date: Stats::from_vec(&post_dates_ms),
-        })
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{PropertyAction, Rightmove};
-    use crate::lib::{property::property::PropertyStatsProvider, util::globals::Globals};
+    use crate::lib::util::globals::Globals;
     use more_asserts::{assert_gt, assert_lt};
 
     #[tokio::test]
@@ -254,7 +240,7 @@ mod tests {
             .get_location_identifier("SW1A 2AA".to_owned())
             .await
             .unwrap();
-        assert_eq!(location_identifier, "REGION^91989");
+        assert_eq!(location_identifier, "POSTCODE^1246000");
     }
 
     #[tokio::test]
@@ -262,21 +248,22 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let properties = rightmove
-            .search("REGION^91989", PropertyAction::Buy, 2, 0.0)
+            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
-        assert_gt!(properties.len(), 600);
+        assert_gt!(properties.len(), 10);
     }
 
     #[tokio::test]
     async fn test_get_stats() {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
-        let stats = rightmove
-            .get_stats("SW1A 2AA".to_owned(), PropertyAction::Buy, 2, 0.0)
+        let properties = rightmove
+            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
+        let stats = rightmove.to_stats(properties);
         assert_lt!(stats.price.min, 1_000_000.0);
-        assert_gt!(stats.price.max, 10_000_000.0);
+        assert_gt!(stats.price.max, 5_000_000.0);
     }
 }
