@@ -4,11 +4,11 @@ use crate::lib::{
         property::{PropertyAction, PropertySummary},
     },
     tube::TubeStation,
-    util::ext::VecResultExt,
+    util::ext::{MongoCollectionExt, VecResultExt},
     util::globals::Globals,
 };
 use anyhow::Result;
-use futures::{future::join_all, StreamExt, TryFutureExt};
+use futures::{future::join_all, TryFutureExt};
 use itertools::iproduct;
 use log::info;
 use mongodb::bson::doc;
@@ -22,10 +22,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
 
     let rightmove = Rightmove::new(&globals);
 
-    let results: Vec<core::result::Result<TubeStation, _>> =
-        globals.db.tube().find(None, None).await?.collect().await;
-    let tube_stations: Vec<TubeStation> = results.into_iter().map(|r| r.unwrap()).collect();
-
+    let tube_stations: Vec<TubeStation> = globals.db.tube().find_to_vec().await;
     let station_infos: Vec<StationInfo> = join_all(tube_stations.into_iter().map(|station| {
         rightmove
             .get_location_identifier(station.postcode.to_owned())
