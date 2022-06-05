@@ -4,6 +4,7 @@ mongo.name = "uk-property-search"
 
 [http]
 max.parallel.connections = 50
+max.retry.count = 3
 
 [log]
 level = "info"

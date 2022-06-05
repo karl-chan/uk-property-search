@@ -3,19 +3,22 @@ use log::debug;
 use reqwest::{
     header::{HeaderMap, USER_AGENT},
     redirect::Policy,
-    Client, IntoUrl,
+    IntoUrl, Response,
 };
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use std::fmt::Debug;
 use tokio::sync::Semaphore;
 
 pub struct Http {
-    client: Client,
-    no_redirect_client: Client,
+    client: ClientWithMiddleware,
+    no_redirect_client: ClientWithMiddleware,
     semaphore: Semaphore,
 }
 
 pub struct HttpOptions {
     max_parallel_connections: Option<usize>,
+    max_retry_count: Option<u32>,
 }
 
 impl Http {
@@ -26,34 +29,53 @@ impl Http {
             .try_into()
             .unwrap();
 
+        let default_max_retry_count = globals
+            .properties
+            .get_int("http.max.retry.count")
+            .try_into()
+            .unwrap();
+
         let default_headers = {
             let mut headers = HeaderMap::new();
             headers.insert(USER_AGENT, "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36".parse().unwrap());
             headers
         };
 
+        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(
+            options
+                .as_ref()
+                .and_then(|o| o.max_retry_count)
+                .unwrap_or(default_max_retry_count),
+        );
+
         Http {
-            client: reqwest::Client::builder()
-                .default_headers(default_headers.clone())
-                .build()
-                .unwrap(),
-            no_redirect_client: reqwest::Client::builder()
-                .default_headers(default_headers.clone())
-                .redirect(Policy::none())
-                .build()
-                .unwrap(),
+            client: ClientBuilder::new(
+                reqwest::Client::builder()
+                    .default_headers(default_headers.clone())
+                    .build()
+                    .unwrap(),
+            )
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build(),
+            no_redirect_client: ClientBuilder::new(
+                reqwest::Client::builder()
+                    .default_headers(default_headers.clone())
+                    .redirect(Policy::none())
+                    .build()
+                    .unwrap(),
+            )
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build(),
             semaphore: Semaphore::new(
                 options
+                    .as_ref()
                     .and_then(|o| o.max_parallel_connections)
                     .unwrap_or(default_max_parallel_connections),
             ),
         }
     }
 
-    pub async fn get<U: IntoUrl + Debug>(
-        &self,
-        url: U,
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    pub async fn get<U: IntoUrl + Debug>(&self, url: U) -> Result<Response, Error> {
         self.get_with_options(url, &[], true).await
     }
 
@@ -62,7 +84,7 @@ impl Http {
         url: U,
         query: &[(&str, &str)],
         follow_redirects: bool,
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    ) -> Result<Response, Error> {
         let permit = self.semaphore.acquire().await.unwrap();
         let client = if follow_redirects {
             &self.client
@@ -103,6 +125,7 @@ mod tests {
             &globals,
             Some(HttpOptions {
                 max_parallel_connections: Some(5),
+                max_retry_count: None,
             }),
         );
         let futures = (0..20)
