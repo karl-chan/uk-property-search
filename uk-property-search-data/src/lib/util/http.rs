@@ -17,8 +17,8 @@ pub struct Http {
 }
 
 pub struct HttpOptions {
-    max_parallel_connections: Option<usize>,
-    max_retry_count: Option<u32>,
+    pub max_parallel_connections: Option<usize>,
+    pub max_retry_count: Option<u32>,
 }
 
 impl Http {
