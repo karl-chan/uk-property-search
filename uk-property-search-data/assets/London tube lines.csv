@@ -305,7 +305,7 @@ Great Western,South Greenford,Greenford
 Great Western,Southall,Hayes and Harlington
 Great Western,West Ealing,Drayton Green
 Great Western,West Ealing,Hanwell
-Greater Anglia,Angel Road,Ponders End
+Greater Anglia,Meridian Water,Ponders End
 Greater Anglia,Brentwood,Shenfield
 Greater Anglia,Brimsdown,Enfield Lock
 Greater Anglia,Cheshunt,Broxbourne
@@ -318,7 +318,6 @@ Greater Anglia,Harold Wood,Brentwood
 Greater Anglia,Lea Bridge,Tottenham Hale
 Greater Anglia,Liverpool Street,Hackney Downs
 Greater Anglia,Liverpool Street,Stratford
-Greater Anglia,Meridian Water,Angel Road
 Greater Anglia,Northumberland Park,Meridian Water
 Greater Anglia,Ponders End,Brimsdown
 Greater Anglia,Romford,Gidea Park
@@ -484,7 +483,7 @@ Northern,West Finchley,Woodside Park
 Northern,Woodside Park,Totteridge and Whetstone
 Overground,Acton Central,Willesden Junction
 Overground,Anerley,Norwood Junction
-Overground,Bethnal Green,Cambridge Heath
+Overground,Bethnal Green Rail,Cambridge Heath
 Overground,Blackhorse Road,Walthamstow Queens Road
 Overground,Brockley,Honor Oak Park
 Overground,Brondesbury,West Hampstead
@@ -539,7 +538,7 @@ Overground,Kew Gardens,Gunnersbury
 Overground,Kilburn High Road,South Hampstead
 Overground,Leyton Midland Road,Leytonstone High Road
 Overground,Leytonstone High Road,Wanstead Park
-Overground,Liverpool Street,Bethnal Green
+Overground,Liverpool Street,Bethnal Green Rail
 Overground,London Fields,Hackney Downs
 Overground,New Cross Gate,Brockley
 Overground,North Wembley,Wembley Central
