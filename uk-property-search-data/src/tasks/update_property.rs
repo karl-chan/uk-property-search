@@ -50,7 +50,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
                 .search(station_info.location_identifier, action, num_beds, radius)
                 .map_ok(move |properties| {
                     let stats = rightmove.to_stats(properties);
-                    info!("Got stats for name: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
+                    info!("Got property stats for station: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
                         station_info.station.name,
                         station_info.station.postcode,
                         action, num_beds, radius
