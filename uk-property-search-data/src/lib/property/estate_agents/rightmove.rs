@@ -7,7 +7,7 @@ use crate::lib::{
         http::Http,
     },
 };
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use itertools::Itertools;
@@ -58,17 +58,21 @@ impl Rightmove {
         lazy_static! {
             static ref SELECTOR: Selector = Selector::parse("#locationIdentifier").unwrap();
         }
-        Html::parse_document(&html)
+        match Html::parse_document(&html)
             .select(&SELECTOR)
             .next()
             .unwrap()
             .value()
             .attr("value")
+            .filter(|location_identifier| !location_identifier.is_empty())
             .map(|location_identifier| location_identifier.to_owned())
-            .ok_or(anyhow!(
-                "Location identifier not found for postcode: {}!",
+        {
+            Some(location_identifier) => Ok(location_identifier),
+            None => bail!(
+                "Location identifier not found for postcode: [{}]!",
                 postcode
-            ))
+            ),
+        }
     }
 
     pub async fn search(
