@@ -13,8 +13,10 @@ pub trait DecodeJsonResponseExt {
 #[async_trait]
 impl DecodeJsonResponseExt for Response {
     async fn json_or_err<T: DeserializeOwned>(self) -> Result<T> {
+        let url = self.url().clone();
         let text = self.text().await?;
-        serde_json::from_str(&text).map_err(|e| anyhow!("{}\nResponse body:\n{}", e, &text))
+        serde_json::from_str(&text)
+            .map_err(|e| anyhow!("{}\nURL:\n{}\nResponse body:\n{}", e, url, &text))
     }
 }
 
