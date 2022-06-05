@@ -1,55 +1,19 @@
-<template>
-  <q-page padding>
-    <div class="row q-gutter-x-lg">
-      <div class="col-grow">
-        <q-option-group
-          v-model="ratings"
-          :options="options"
-          color="green"
-          type="checkbox"
-          inline
-        />
-      </div>
-      <div class="col">
-        <q-input
-          v-model="cutoffDate"
-          label="After Inpsection Date"
-          debounce="500"
-          filled
-          mask="date"
-          :rules="['date']"
-        >
-          <template #append>
-            <q-icon
-              name="event"
-              class="cursor-pointer"
-            >
-              <q-popup-proxy
-                ref="qDateProxy"
-                transition-show="scale"
-                transition-hide="scale"
-              >
-                <q-date v-model="cutoffDate">
-                  <div class="row items-center justify-end">
-                    <q-btn
-                      v-close-popup
-                      label="Close"
-                      color="primary"
-                      flat
-                    />
-                  </div>
-                </q-date>
-              </q-popup-proxy>
-            </q-icon>
-          </template>
-        </q-input>
-      </div>
-    </div>
-    <LeafletMap
-      class="map"
-      :markers="markers"
-    />
-  </q-page>
+<template lang='pug'>
+q-page(padding)
+  .row.q-gutter-x-lg
+    .col-grow
+      q-option-group(v-model='ratings' :options='options' color='green' type='checkbox' inline)
+    .col
+      // Date picker
+      q-input(v-model='cutoffDate' label='After Inpsection Date' debounce='500' filled mask='date' :rules="['date']")
+        template(#append)
+          q-icon.cursor-pointer(name='event')
+            q-popup-proxy(ref='qDateProxy' transition-show='scale' transition-hide='scale')
+              q-date(v-model='cutoffDate')
+                .row.items-center.justify-end
+                  q-btn(v-close-popup='' label='Close' color='primary' flat)
+  leaflet-map.map(:markers='markers')
+
 </template>
 
 <script lang="ts">
