@@ -12,6 +12,7 @@ pub enum PropertyAction {
 pub struct PropertyStats {
     pub price: Stats,
     pub post_date: Stats,
+    pub count: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
