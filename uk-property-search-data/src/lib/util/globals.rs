@@ -12,7 +12,7 @@ pub struct Globals {
 impl Globals {
     pub async fn new() -> Globals {
         INIT.call_once(|| {
-            simple_logger::init_with_level(Level::Info).unwrap();
+            simple_logger::init_with_level(Level::Debug).unwrap();
         });
         let properties = Properties::new();
         let db = Db::new(&properties).await;

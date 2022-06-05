@@ -1,16 +1,21 @@
 use crate::lib::{
     math::stats::Stats,
-    property::property::{PropertyAction, PropertyStats, PropertyStatsProvider},
-    util::{globals::Globals, http::Http},
+    property::property::{PropertyAction, PropertyStats},
+    util::{
+        ext::{DecodeJsonResponseExt, VecResultExt},
+        globals::Globals,
+        http::Http,
+    },
 };
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::future::join_all;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use std::iter;
 
 pub struct Rightmove {
     http: Http,
@@ -33,7 +38,7 @@ impl Rightmove {
         }
     }
 
-    async fn get_location_identifier(&self, postcode: String) -> Result<String> {
+    pub async fn get_location_identifier(&self, postcode: String) -> Result<String> {
         #[derive(Debug, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct LocationIdentifierResponse {
@@ -45,29 +50,30 @@ impl Rightmove {
             location_identifier: String,
         }
 
-        let delimited_postcode = postcode
-            .chars()
-            .chunks(2)
-            .into_iter()
-            .map(|chunk| chunk.collect::<String>())
-            .join("/");
         let url = format!(
-            "https://www.rightmove.co.uk/typeAhead/uknostreet/{}",
-            &delimited_postcode
+            "https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation={}",
+            &postcode
         );
-        let res: LocationIdentifierResponse = self.http.get(url).await?.json().await?;
-        res.type_ahead_locations
-            .first()
-            .map(|l| l.location_identifier.clone())
+        let html = self.http.get(url).await?.text().await?;
+        lazy_static! {
+            static ref SELECTOR: Selector = Selector::parse("#locationIdentifier").unwrap();
+        }
+        Html::parse_document(&html)
+            .select(&SELECTOR)
+            .next()
+            .unwrap()
+            .value()
+            .attr("value")
+            .map(|location_identifier| location_identifier.to_owned())
             .ok_or(anyhow!(
                 "Location identifier not found for postcode: {}!",
                 postcode
             ))
     }
 
-    async fn search(
+    pub async fn search(
         &self,
-        location_identifier: &str,
+        location_identifier: String,
         action: PropertyAction,
         num_beds: u32,
         radius: f64,
@@ -86,7 +92,7 @@ impl Rightmove {
             id: u32,
             location: LocationResponse,
             price: PriceResponse,
-            display_size: String,
+            display_size: Option<String>,
             first_visible_date: String,
             listing_update: ListingUpdateResponse,
         }
@@ -108,8 +114,8 @@ impl Rightmove {
         #[derive(Debug, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct ListingUpdateResponse {
-            listing_update_reason: String,
-            listing_update_date: String,
+            listing_update_reason: Option<String>,
+            listing_update_date: Option<String>,
         }
 
         #[derive(Debug, Serialize, Deserialize)]
@@ -150,7 +156,7 @@ impl Rightmove {
                 .http
                 .get_with_options(url, query, true)
                 .await?
-                .json()
+                .json_or_err()
                 .await?;
             Ok(response)
         }
@@ -167,75 +173,63 @@ impl Rightmove {
         )
         .await;
 
-        fn parse_square_feet(s: &str) -> Option<i32> {
+        fn parse_square_feet(maybe_display_size: Option<String>) -> Option<i32> {
             lazy_static! {
                 static ref RE: Regex = Regex::new(r"(.*) sq. ft.").unwrap();
             }
-            RE.captures(s)
-                .map(|caps| caps.get(1).unwrap())
-                .map(|m| m.as_str().replace(",", "").parse::<i32>().unwrap())
+            maybe_display_size.and_then(|display_size| {
+                RE.captures(&display_size)
+                    .map(|caps| caps.get(1).unwrap())
+                    .map(|m| m.as_str().replace(",", "").parse::<i32>().unwrap())
+            })
         }
 
         fn parse_date(s: &str) -> DateTime<Utc> {
             DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
         }
 
-        let properties: Vec<RightmoveProperty> = response
-            .properties
-            .into_iter()
-            .chain(
-                more_responses
-                    .into_iter()
-                    .flat_map(|r| r.unwrap().properties.into_iter()),
-            )
+        let properties: Vec<RightmoveProperty> = iter::once(response)
+            .chain(more_responses.unwrap_all().into_iter())
+            .flat_map(|r| r.properties.into_iter())
             .map(|property| RightmoveProperty {
                 id: property.id,
                 coordinates: (property.location.longitude, property.location.latitude),
                 price: property.price.amount,
-                square_feet: parse_square_feet(&property.display_size),
+                square_feet: parse_square_feet(property.display_size),
                 post_date: parse_date(&property.first_visible_date),
-                reduced_date: match property.listing_update.listing_update_reason.as_str() {
-                    "price_reduced" => {
-                        Some(parse_date(&property.listing_update.listing_update_date))
-                    }
-                    _ => None,
-                },
+                reduced_date: property
+                    .listing_update
+                    .listing_update_reason
+                    .and_then(|reason| match reason.as_str() {
+                        "price_reduced" => property
+                            .listing_update
+                            .listing_update_date
+                            .map(|date| parse_date(&date)),
+                        _ => None,
+                    }),
             })
             .collect();
         Ok(properties)
     }
-}
 
-#[async_trait]
-impl PropertyStatsProvider for Rightmove {
-    async fn get_stats(
-        &self,
-        postcode: String,
-        action: PropertyAction,
-        num_beds: u32,
-        radius: f64,
-    ) -> Result<PropertyStats> {
-        let location_identifier = self.get_location_identifier(postcode).await?;
-        let properties = self
-            .search(&location_identifier, action, num_beds, radius)
-            .await?;
+    pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
         let prices = properties.iter().map(|p| p.price).collect_vec();
         let post_dates_ms = properties
             .iter()
             .map(|p| p.post_date.timestamp_millis() as f64)
             .collect_vec();
 
-        Ok(PropertyStats {
+        PropertyStats {
             price: Stats::from_vec(&prices),
             post_date: Stats::from_vec(&post_dates_ms),
-        })
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{PropertyAction, Rightmove};
-    use crate::lib::{property::property::PropertyStatsProvider, util::globals::Globals};
+    use crate::lib::util::globals::Globals;
     use more_asserts::{assert_gt, assert_lt};
 
     #[tokio::test]
@@ -246,7 +240,7 @@ mod tests {
             .get_location_identifier("SW1A 2AA".to_owned())
             .await
             .unwrap();
-        assert_eq!(location_identifier, "REGION^91989");
+        assert_eq!(location_identifier, "POSTCODE^1246000");
     }
 
     #[tokio::test]
@@ -254,21 +248,22 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let properties = rightmove
-            .search("REGION^91989", PropertyAction::Buy, 2, 0.0)
+            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
-        assert_gt!(properties.len(), 600);
+        assert_gt!(properties.len(), 10);
     }
 
     #[tokio::test]
     async fn test_get_stats() {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
-        let stats = rightmove
-            .get_stats("SW1A 2AA".to_owned(), PropertyAction::Buy, 2, 0.0)
+        let properties = rightmove
+            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
+        let stats = rightmove.to_stats(properties);
         assert_lt!(stats.price.min, 1_000_000.0);
-        assert_gt!(stats.price.max, 10_000_000.0);
+        assert_gt!(stats.price.max, 5_000_000.0);
     }
 }
