@@ -237,7 +237,6 @@ impl Rightmove {
         PropertyStats {
             price: Stats::from_vec(&prices),
             post_date: Stats::from_vec(&post_dates_ms),
-            count: prices.len(),
         }
     }
 }

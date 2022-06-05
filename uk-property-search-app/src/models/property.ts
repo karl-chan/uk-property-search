@@ -5,12 +5,12 @@ export interface Stats {
   median: number,
   q3: number,
   max: number,
+  count: number
 }
 
 export interface PropertyStats {
   price: Stats,
   post_date: Stats,
-  count: number,
 }
 
 export interface PropertySummary {
