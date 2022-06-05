@@ -7,6 +7,7 @@ pub struct Stats {
     pub median: f64,
     pub q3: f64,
     pub max: f64,
+    pub count: usize,
 }
 
 impl Stats {
@@ -18,6 +19,7 @@ impl Stats {
             median: data.median(),
             q3: data.upper_quartile(),
             max: data.max(),
+            count: data.len(),
         }
     }
 }
@@ -36,5 +38,6 @@ mod tests {
         assert_eq!(stats.median, 2.5);
         assert_almost_eq!(stats.q3, 3.583333333333333, 1e-15);
         assert_eq!(stats.max, 4.0);
+        assert_eq!(stats.count, 4);
     }
 }

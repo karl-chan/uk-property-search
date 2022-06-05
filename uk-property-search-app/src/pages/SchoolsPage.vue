@@ -12,6 +12,7 @@ q-page(padding)
               q-date(v-model='cutoffDate')
                 .row.items-center.justify-end
                   q-btn(v-close-popup='' label='Close' color='primary' flat)
+
   leaflet-map.map(:markers='markers')
 
 </template>
