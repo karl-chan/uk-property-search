@@ -13,6 +13,12 @@ use itertools::iproduct;
 use log::info;
 use mongodb::bson::doc;
 
+// Only consider Studio - 3 bedroom flats
+const MAX_BEDS: u32 = 3;
+
+// Only consider 0.25 miles radius from train stations
+const SEARCH_RADIUS: f64 = 0.25;
+
 pub async fn update_property(globals: &Globals) -> Result<()> {
     #[derive(Clone)]
     struct StationInfo {
@@ -39,8 +45,8 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
             [&rightmove],
             station_infos,
             [PropertyAction::Buy, PropertyAction::Rent],
-            0..4,
-            [0.25]
+            0..(MAX_BEDS+1),
+            [SEARCH_RADIUS]
         )
         .map(|(rightmove, station_info, action, num_beds, radius)| {
             rightmove

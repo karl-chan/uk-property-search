@@ -19,7 +19,7 @@ export default defineComponent({
       default: 13
     },
     markers: {
-      type: Array as PropType<L.CircleMarker[]>,
+      type: Array as PropType<L.Layer[]>,
       default: () => []
     }
   },
@@ -47,7 +47,7 @@ export default defineComponent({
         map.setZoom(zoom.value)
       }
     })
-    watch(markers, (newMarkers: L.CircleMarker[], oldMarkers: L.CircleMarker[]) => {
+    watch(markers, (newMarkers: L.Layer[], oldMarkers: L.Layer[]) => {
       if (map !== undefined) {
         const newSet = new Set(newMarkers)
         const oldSet = new Set(oldMarkers)
@@ -77,7 +77,7 @@ function initialise ({
   id: string;
   coordinates: [number, number];
   zoom: number;
-  markers: L.CircleMarker[];
+  markers: L.Layer[];
 }): L.Map {
   const map = L.map(id, { preferCanvas: true })
     .setView(coordinates, zoom)
