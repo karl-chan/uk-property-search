@@ -4,7 +4,7 @@ use crate::lib::{
     util::{
         ext::{DecodeJsonResponseExt, VecResultExt},
         globals::Globals,
-        http::Http,
+        http::{Http, HttpOptions},
     },
 };
 use anyhow::{bail, Result};
@@ -34,7 +34,18 @@ pub struct RightmoveProperty {
 impl Rightmove {
     pub fn new(globals: &Globals) -> Rightmove {
         Rightmove {
-            http: Http::new(globals, None),
+            http: Http::new(
+                globals,
+                Some(HttpOptions {
+                    max_parallel_connections: Some(
+                        globals
+                            .properties
+                            .get_int("rightmove.max.parallel.connections")
+                            as usize,
+                    ),
+                    max_retry_count: None,
+                }),
+            ),
         }
     }
 

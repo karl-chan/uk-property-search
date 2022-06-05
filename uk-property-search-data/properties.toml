@@ -9,5 +9,8 @@ max.retry.count = 3
 [log]
 level = "info"
 
+[rightmove]
+max.parallel.connections = 10
+
 [server]
 default.port = 3000
