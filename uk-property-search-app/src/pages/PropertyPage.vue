@@ -1,8 +1,17 @@
 <template lang='pug'>
 q-page(padding)
-  .row.q-gutter-x-lg
-    q-select(v-model='numBeds' :options='[0, 1, 2, 3]' label='Number of bedrooms')
-    q-range(v-model='priceRange' :min='minPrice' :max='maxPrice' :step='step' label-always markers)
+  .row.q-gutter-x-lg.items-end
+    .col-1
+      q-select(v-model='numBeds' :options='numBedsOptions' label='Beds')
+    .col-1
+      q-select(v-model='action' :options='actionOptions', label='Action')
+    .col
+      q-range(v-model='priceRange' :min='minPrice' :max='maxPrice' :step='step' label-always markers)
+    .col-shrink
+      q-checkbox(v-model='includeBeyondPriceRange' :label='`Include £${maxPrice}+`')
+
+  .row.q-my-sm
+    q-btn(label='Search' color='secondary' icon-right='search' @click='search')
 
   leaflet-map.map(:markers='markers')
 
@@ -13,6 +22,8 @@ import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
+import { PropertyAction, PropertySummary } from '../models/property'
+import { useStore } from '../store'
 
 export default defineComponent({
   name: 'PropertyPage',
@@ -20,26 +31,68 @@ export default defineComponent({
     LeafletMap
   },
   setup () {
-    const numBeds: Ref<number> = ref(2)
+    const store = useStore()
+
     const minPrice = 0
-    const maxPrice = 5_000_000
+    const maxPrice = 2_000_000
     const step = 50_000
+    const actionOptions = [
+      {
+        label: 'Buy',
+        value: PropertyAction.Buy
+      },
+      {
+        label: 'Rent',
+        value: PropertyAction.Rent
+      }
+    ]
+    const numBedsOptions = [0, 1, 2, 3] // Only consider Studio - 3 bedroom flats
+
+    const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
+    const numBeds: Ref<number> = ref(2)
     const priceRange: Ref<{min: number, max:number}> = ref({
       min: minPrice,
       max: maxPrice
     })
+    const includeBeyondPriceRange: Ref<boolean> = ref(false)
+    const properties: Ref<PropertySummary[]> = ref(store.state.property.properties)
 
-    const markers: ComputedRef<L.Marker[]> = computed(() => {
-      return []
+    function search () {
+      const hasAction = (property: PropertySummary) => property.action === action.value.value
+      const hasBeds = (property: PropertySummary) => property.numBeds === numBeds.value
+      const withinPriceRange = (property: PropertySummary) =>
+        priceRange.value.min <= property.stats.price.median &&
+         (property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
+
+      properties.value = store.state.property.properties
+        .filter(hasAction)
+        .filter(hasBeds)
+        .filter(withinPriceRange)
+    }
+
+    const markers: ComputedRef<L.CircleMarker[]> = computed(() => {
+      return properties.value.map(property =>
+        new L.CircleMarker(
+          { lat: property.coordinates[1], lng: property.coordinates[0] },
+          { radius: 1 }
+        ).bindTooltip(`£${property.stats.price.median}`, { permanent: true })
+      )
     })
 
     return {
-      numBeds,
       minPrice,
       maxPrice,
       step,
+      actionOptions,
+      numBedsOptions,
+
+      action,
+      numBeds,
       priceRange,
-      markers
+      includeBeyondPriceRange,
+      markers,
+
+      search
     }
   }
 })

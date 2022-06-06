@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug)]
 pub enum PropertyAction {
-    Buy,
-    Rent,
+    Buy = 1,
+    Rent = 2,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -19,5 +19,7 @@ pub struct PropertyStats {
 pub struct PropertySummary {
     pub postcode: String,
     pub coordinates: (f64, f64), // (long, lat)
+    pub action: u8,
+    pub num_beds: u32,
     pub stats: PropertyStats,
 }

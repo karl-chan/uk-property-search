@@ -61,6 +61,8 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
                     PropertySummary {
                         postcode: station_info.station.postcode,
                         coordinates: station_info.station.coordinates,
+                        action: action as u8,
+                        num_beds,
                         stats,
                     }
                 })

@@ -1,4 +1,9 @@
 
+export enum PropertyAction {
+  Buy = 1,
+  Rent = 2
+}
+
 export interface Stats {
   min: number,
   q1: number,
@@ -10,11 +15,13 @@ export interface Stats {
 
 export interface PropertyStats {
   price: Stats,
-  post_date: Stats,
+  postDate: Stats,
 }
 
 export interface PropertySummary {
   postcode: string,
   coordinates: [number, number],
+  action: PropertyAction,
+  numBeds: number,
   stats: PropertyStats,
 }

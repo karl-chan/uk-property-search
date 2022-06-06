@@ -5,8 +5,12 @@ import {
   Store as VuexStore,
   useStore as vuexUseStore
 } from 'vuex'
+import property from './property'
+import { PropertyStateInterface } from './property/state'
 import schools from './schools'
 import { SchoolsStateInterface } from './schools/state'
+import tube from './tube'
+import { TubeStateInterface } from './tube/state'
 
 /*
  * If not building with SSR mode, you can
@@ -18,7 +22,9 @@ import { SchoolsStateInterface } from './schools/state'
  */
 
 export interface StateInterface {
+  property: PropertyStateInterface
   schools: SchoolsStateInterface
+  tube: TubeStateInterface
 }
 
 // provide typings for `this.$store`
@@ -34,7 +40,9 @@ export const storeKey: InjectionKey<VuexStore<StateInterface>> = Symbol('vuex-ke
 export default store(function (/* { ssrContext } */) {
   const Store = createStore<StateInterface>({
     modules: {
-      schools
+      property,
+      schools,
+      tube
     },
 
     // enable strict mode (adds overhead!)
@@ -43,7 +51,9 @@ export default store(function (/* { ssrContext } */) {
   })
 
   void Promise.all([
-    Store.dispatch('schools/init')
+    Store.dispatch('property/init'),
+    Store.dispatch('schools/init'),
+    Store.dispatch('tube/init')
   ])
 
   return Store
