@@ -20,6 +20,7 @@ q-page(padding)
 <script lang="ts">
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
+import { round } from 'lodash'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
 import { PropertyAction, PropertySummary } from '../models/property'
@@ -75,7 +76,7 @@ export default defineComponent({
         new L.CircleMarker(
           { lat: property.coordinates[1], lng: property.coordinates[0] },
           { radius: 1 }
-        ).bindTooltip(`£${property.stats.price.median}`, { permanent: true })
+        ).bindTooltip(`£${round(property.stats.price.median)}`, { permanent: true })
       )
     })
 

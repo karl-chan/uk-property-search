@@ -15,7 +15,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
-use std::iter;
+use std::{collections::HashSet, iter};
 
 pub struct Rightmove {
     http: Http,
@@ -25,7 +25,7 @@ pub struct Rightmove {
 pub struct RightmoveProperty {
     id: u32,
     coordinates: (f64, f64), // (longitude, latitude)
-    price: u32,
+    price: u32,              // total (if buy) / monthly (if rent)
     square_feet: Option<i32>,
     post_date: DateTime<Utc>,
     reduced_date: Option<DateTime<Utc>>,
@@ -110,6 +110,7 @@ impl Rightmove {
             display_size: Option<String>,
             first_visible_date: String,
             listing_update: ListingUpdateResponse,
+            property_sub_type: String,
         }
 
         #[derive(Debug, Serialize, Deserialize)]
@@ -123,6 +124,7 @@ impl Rightmove {
         #[serde(rename_all = "camelCase")]
         struct PriceResponse {
             amount: u32,
+            frequency: String,
             currency_code: String,
         }
 
@@ -203,13 +205,40 @@ impl Rightmove {
             DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
         }
 
+        fn parse_price(price: PriceResponse) -> u32 {
+            match price.frequency.as_str() {
+                "weekly" => price.amount * 52 / 12,
+                "yearly" => price.amount / 12,
+                "monthly" | "not specified" => price.amount,
+                _ => panic!("Unrecognised frequency in price response: {:?}", price),
+            }
+        }
+
+        fn is_blacklisted(property_response: &PropertyResponse) -> bool {
+            lazy_static! {
+                static ref BLACKLISTED_PROPERTY_SUBTYPES: HashSet<String> = [
+                    "Garages",
+                    "Land for sale",
+                    "Not Specified",
+                    "Office",
+                    "Parking",
+                    "Plot for sale",
+                ]
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect();
+            }
+            return BLACKLISTED_PROPERTY_SUBTYPES.contains(&property_response.property_sub_type);
+        }
+
         let properties: Vec<RightmoveProperty> = iter::once(response)
             .chain(more_responses.unwrap_all().into_iter())
             .flat_map(|r| r.properties.into_iter())
+            .filter(|property| !is_blacklisted(property))
             .map(|property| RightmoveProperty {
                 id: property.id,
                 coordinates: (property.location.longitude, property.location.latitude),
-                price: property.price.amount,
+                price: parse_price(property.price),
                 square_feet: parse_square_feet(property.display_size),
                 post_date: parse_date(&property.first_visible_date),
                 reduced_date: property
