@@ -35,8 +35,26 @@ export default defineComponent({
     const store = useStore()
 
     const minPrice = 0
-    const maxPrice = 2_000_000
-    const step = 50_000
+    const maxPrice: ComputedRef<number> = computed(() => {
+      switch (action.value.value) {
+      case PropertyAction.Buy:
+        return 2_000_000
+      case PropertyAction.Rent:
+        return 4_000
+      default:
+        return 0
+      }
+    })
+    const step: ComputedRef<number> = computed(() => {
+      switch (action.value.value) {
+      case PropertyAction.Buy:
+        return 50_000
+      case PropertyAction.Rent:
+        return 100
+      default:
+        return 0
+      }
+    })
     const actionOptions = [
       {
         label: 'Buy',
@@ -71,12 +89,16 @@ export default defineComponent({
         .filter(withinPriceRange)
     }
 
+    function getTooltipText (price: number): string {
+      return price ? `£${round(price)}` : 'N/A'
+    }
+
     const markers: ComputedRef<L.CircleMarker[]> = computed(() => {
       return properties.value.map(property =>
         new L.CircleMarker(
           { lat: property.coordinates[1], lng: property.coordinates[0] },
           { radius: 1 }
-        ).bindTooltip(`£${round(property.stats.price.median)}`, { permanent: true })
+        ).bindTooltip(getTooltipText(property.stats.price.median), { permanent: true })
       )
     })
 
