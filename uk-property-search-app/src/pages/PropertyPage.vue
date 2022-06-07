@@ -12,6 +12,7 @@ q-page(padding)
 
   .row.q-my-sm
     q-btn(label='Search' color='secondary' icon-right='search' @click='search')
+    q-checkbox(v-model='showDetailedTooltip' label='Show detailed tooltip')
 
   leaflet-map.map(:markers='markers')
 
@@ -24,6 +25,7 @@ import { round } from 'lodash'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
 import { PropertyAction, PropertySummary } from '../models/property'
+import { TubeStation } from '../models/tube'
 import { useStore } from '../store'
 
 export default defineComponent({
@@ -74,9 +76,11 @@ export default defineComponent({
       max: maxPrice
     })
     const includeBeyondPriceRange: Ref<boolean> = ref(false)
+    const showDetailedTooltip: Ref<boolean> = ref(false)
     const properties: Ref<PropertySummary[]> = ref(store.state.property.properties)
 
     function search () {
+      const isValid = (property: PropertySummary) => property.stats.price.count > 0
       const hasAction = (property: PropertySummary) => property.action === action.value.value
       const hasBeds = (property: PropertySummary) => property.numBeds === numBeds.value
       const withinPriceRange = (property: PropertySummary) =>
@@ -84,13 +88,31 @@ export default defineComponent({
          (property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
 
       properties.value = store.state.property.properties
-        .filter(hasAction)
         .filter(hasBeds)
+        .filter(hasAction)
         .filter(withinPriceRange)
+        .filter(isValid)
     }
 
-    function getTooltipText (price: number): string {
-      return price ? `£${round(price)}` : 'N/A'
+    function getTooltipText (property: PropertySummary): string {
+      if (showDetailedTooltip.value) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const station: TubeStation = store.getters['tube/postcodeToStation'][property.postcode]
+        return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
+        Min: ${formatPrice(property.stats.price.min)}<br>
+        Q1: ${formatPrice(property.stats.price.q1)}<br>
+        Median: ${formatPrice(property.stats.price.median)}<br>
+        Q3: ${formatPrice(property.stats.price.q3)}<br>
+        Max: ${formatPrice(property.stats.price.max)}<br>
+        Sample: ${property.stats.price.count}<br>
+        Lines:<ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul>`
+      } else {
+        return formatPrice(property.stats.price.median)
+      }
+    }
+
+    function formatPrice (price: number): string {
+      return `£${round(price)}`
     }
 
     const markers: ComputedRef<L.CircleMarker[]> = computed(() => {
@@ -98,7 +120,7 @@ export default defineComponent({
         new L.CircleMarker(
           { lat: property.coordinates[1], lng: property.coordinates[0] },
           { radius: 1 }
-        ).bindTooltip(getTooltipText(property.stats.price.median), { permanent: true })
+        ).bindTooltip(getTooltipText(property), { permanent: true })
       )
     })
 
@@ -113,6 +135,8 @@ export default defineComponent({
       numBeds,
       priceRange,
       includeBeyondPriceRange,
+      showDetailedTooltip,
+
       markers,
 
       search
