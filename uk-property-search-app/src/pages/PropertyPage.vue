@@ -78,7 +78,7 @@ export default defineComponent({
     const includeBeyondPriceRange: Ref<boolean> = ref(false)
     const showDetailedTooltip: Ref<boolean> = ref(false)
     const properties: Ref<PropertySummary[]> = ref(store.state.property.properties)
-    const markers: Ref<L.CircleMarker[]> = ref([])
+    const markers: Ref<L.Layer[]> = ref([])
 
     function search () {
       const isValid = (property: PropertySummary) => property.stats.price.count > 0
@@ -97,19 +97,17 @@ export default defineComponent({
       markers.value = updateMarkers()
     }
 
-    function getTooltipText (property: PropertySummary): string {
+    function getDetailedTooltipText (property: PropertySummary): string {
       if (showDetailedTooltip.value) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const station: TubeStation = store.getters['tube/postcodeToStation'][property.postcode]
         return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
         <table><tbody>
-        <tr><td>Min</td>   <td>${formatPrice(property.stats.price.min)}</td></tr>
-        <tr><td>Q1</td>    <td>${formatPrice(property.stats.price.q1)}</td></tr>
-        <tr><td>Median</td><td>${formatPrice(property.stats.price.median)}</td></tr>
-        <tr><td>Q3</td>    <td>${formatPrice(property.stats.price.q3)}</td></tr>
-        <tr><td>Max</td>   <td>${formatPrice(property.stats.price.max)}</td></tr>
-        <tr><td>Sample</td><td>${property.stats.price.count}</td></tr> 
-        <tr><td>Lines</td> <td><ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul></td></tr>
+        <tr><td>Avg</td><td>${formatPrice(property.stats.price.median)}</td></tr>
+        <tr><td>Range</td><td>${formatPrice(property.stats.price.min)} - ${formatPrice(property.stats.price.max)}</td></tr>
+        <tr><td>IQR</td><td>${formatPrice(property.stats.price.q1)} - ${formatPrice(property.stats.price.q3)}</td></tr>
+        <tr><td>Count</td><td>${property.stats.price.count}</td></tr> 
+        <tr><td>Lines</td><td><ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul></td></tr>
         </tbody></table>`
       } else {
         return formatPrice(property.stats.price.median)
@@ -120,12 +118,20 @@ export default defineComponent({
       return `£${round(price)}`
     }
 
-    function updateMarkers (): L.CircleMarker[] {
-      return properties.value.map(property =>
-        new L.CircleMarker(
-          { lat: property.coordinates[1], lng: property.coordinates[0] },
-          { radius: 1 }
-        ).bindTooltip(getTooltipText(property), { permanent: true })
+    function updateMarkers (): L.Layer[] {
+      return properties.value.map(property => {
+        if (showDetailedTooltip.value) {
+          return new L.CircleMarker(
+            { lat: property.coordinates[1], lng: property.coordinates[0] },
+            { radius: 5 }
+          ).bindTooltip(getDetailedTooltipText(property))
+        } else {
+          return new L.CircleMarker(
+            { lat: property.coordinates[1], lng: property.coordinates[0] },
+            { radius: 1 }
+          ).bindTooltip(formatPrice(property.stats.price.median), { permanent: true })
+        }
+      }
       )
     }
 
