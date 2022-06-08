@@ -51,5 +51,5 @@ async fn rocket() -> _ {
     rocket::custom(&config)
         .manage(globals)
         .mount("/api", routes![property, tube_stations, schools])
-        .mount("/", FileServer::from("../uk-property-search-app/dist/spa"))
+        .mount("/", FileServer::from("../uk-property-search-app/dist/pwa"))
 }
