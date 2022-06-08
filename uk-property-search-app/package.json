@@ -4,7 +4,7 @@
   "productName": "UK Property Search App",
   "private": true,
   "scripts": {
-    "postinstall": "quasar build",
+    "postinstall": "quasar build -m pwa",
     "lint": "eslint --ext .js,.ts,.vue ./",
     "test": "echo \"No test specified\" && exit 0"
   },
@@ -24,6 +24,7 @@
     "@quasar/app": "3.3.3",
     "@types/node": "17.0.40",
     "@types/pug": "2.0.6",
+    "@types/workbox-webpack-plugin": "^5.1.8",
     "@typescript-eslint/eslint-plugin": "5.27.0",
     "@typescript-eslint/parser": "5.27.0",
     "eslint": "8.17.0",
@@ -33,7 +34,8 @@
     "eslint-plugin-promise": "6.0.0",
     "eslint-plugin-vue": "9.1.0",
     "pug": "3.0.2",
-    "pug-plain-loader": "1.1.0"
+    "pug-plain-loader": "1.1.0",
+    "workbox-webpack-plugin": "^6.5.3"
   },
   "browserslist": [
     "last 10 Chrome versions",
