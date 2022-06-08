@@ -100,13 +100,14 @@ export default defineComponent({
     })
 
     const columns = [
-      { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true },
+      { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
       { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true },
       { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.price.median, format: formatPrice, sortable: true },
       { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.price.min, format: formatPrice, sortable: true },
       { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.price.max, format: formatPrice, sortable: true },
       { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.price.q1, format: formatPrice, sortable: true },
       { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.price.q3, format: formatPrice, sortable: true },
+      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.price.count, sortable: true },
       { name: 'lines', label: 'Lines', field: (row: StationProperty) => row.station.lines, format: (lines: string[]) => lines.join(','), sortable: true, align: 'left' }
     ]
 
