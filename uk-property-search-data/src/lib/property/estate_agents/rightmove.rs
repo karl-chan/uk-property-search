@@ -218,6 +218,7 @@ impl Rightmove {
             lazy_static! {
                 static ref BLACKLISTED_PROPERTY_SUBTYPES: HashSet<String> = [
                     "Garages",
+                    "Hotel Room",
                     "Land for sale",
                     "Not Specified",
                     "Office",

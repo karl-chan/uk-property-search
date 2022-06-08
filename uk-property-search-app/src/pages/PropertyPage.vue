@@ -26,7 +26,8 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
 import { PropertyAction, PropertySummary } from '../models/property'
 import { TubeStation } from '../models/tube'
-import { useStore } from '../store'
+import { usePropertyStore } from '../stores/property'
+import { useTubeStore } from '../stores/tube'
 
 export default defineComponent({
   name: 'PropertyPage',
@@ -34,7 +35,8 @@ export default defineComponent({
     LeafletMap
   },
   setup () {
-    const store = useStore()
+    const tubeStore = useTubeStore()
+    const propertyStore = usePropertyStore()
 
     const minPrice = 0
     const maxPrice: ComputedRef<number> = computed(() => {
@@ -77,7 +79,7 @@ export default defineComponent({
     })
     const includeBeyondPriceRange: Ref<boolean> = ref(false)
     const showDetailedTooltip: Ref<boolean> = ref(false)
-    const properties: Ref<PropertySummary[]> = ref(store.state.property.properties)
+    const properties: Ref<PropertySummary[]> = ref(propertyStore.properties)
     const markers: Ref<L.Layer[]> = ref([])
 
     function search () {
@@ -88,7 +90,7 @@ export default defineComponent({
         priceRange.value.min <= property.stats.price.median &&
          (property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
 
-      properties.value = store.state.property.properties
+      properties.value = propertyStore.properties
         .filter(hasBeds)
         .filter(hasAction)
         .filter(withinPriceRange)
@@ -100,7 +102,7 @@ export default defineComponent({
     function getDetailedTooltipText (property: PropertySummary): string {
       if (showDetailedTooltip.value) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const station: TubeStation = store.getters['tube/postcodeToStation'][property.postcode]
+        const station: TubeStation = tubeStore.postcodeToStations[property.postcode]
         return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
         <table><tbody>
         <tr><td>Avg</td><td>${formatPrice(property.stats.price.median)}</td></tr>

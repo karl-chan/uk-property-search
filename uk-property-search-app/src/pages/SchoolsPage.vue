@@ -27,7 +27,7 @@ import { colors, date } from 'quasar'
 import type { Ref } from 'vue'
 import { defineComponent, ref } from 'vue'
 import { Rating, School } from '../models/school'
-import { useStore } from '../store'
+import { useSchoolStore } from '../stores/school'
 
 const { getPaletteColor } = colors
 
@@ -37,12 +37,12 @@ export default defineComponent({
     LeafletMap
   },
   setup () {
-    const store = useStore()
+    const schoolStore = useSchoolStore()
 
     const ratings: Ref<Rating[]> = ref([])
     const cutoffDate: Ref<string> = ref('2006/01/01')
 
-    const schools: Ref<School[]> = ref(store.state.schools.schools)
+    const schools: Ref<School[]> = ref(schoolStore.schools)
     const markers: Ref<L.Layer[]> = ref([])
 
     const options = [
@@ -56,7 +56,7 @@ export default defineComponent({
       const inRating = (school: School) => school.rating !== undefined && ratings.value.includes(school.rating)
       const afterCutoff = (school: School) => date.getDateDiff(school.inspectionDateMs ?? new Date().getTime(), cutoffDate.value, 'seconds') > 0
 
-      schools.value = store.state.schools.schools
+      schools.value = schoolStore.schools
         .filter(inRating)
         .filter(afterCutoff)
 
