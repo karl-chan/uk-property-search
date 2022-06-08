@@ -16,6 +16,8 @@ q-page(padding)
 
   leaflet-map.map(:markers='markers')
 
+  .row.q-my-sm
+    q-table(title="Property prices" :rows='stationProperties' :columns='columns' :pagination='paginationOptions' row-key='postcode')
 </template>
 
 <script lang="ts">
@@ -28,6 +30,11 @@ import { PropertyAction, PropertySummary } from '../models/property'
 import { TubeStation } from '../models/tube'
 import { usePropertyStore } from '../stores/property'
 import { useTubeStore } from '../stores/tube'
+
+interface StationProperty {
+  station: TubeStation,
+  property : PropertySummary
+}
 
 export default defineComponent({
   name: 'PropertyPage',
@@ -70,6 +77,9 @@ export default defineComponent({
       }
     ]
     const numBedsOptions = [0, 1, 2, 3] // Only consider Studio - 3 bedroom flats
+    const paginationOptions = {
+      rowsPerPage: 100
+    }
 
     const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
     const numBeds: Ref<number> = ref(2)
@@ -79,18 +89,36 @@ export default defineComponent({
     })
     const includeBeyondPriceRange: Ref<boolean> = ref(false)
     const showDetailedTooltip: Ref<boolean> = ref(false)
-    const properties: Ref<PropertySummary[]> = ref(propertyStore.properties)
+    const stationProperties: Ref<StationProperty[]> = ref([])
     const markers: Ref<L.Layer[]> = ref([])
 
-    function search () {
-      const isValid = (property: PropertySummary) => property.stats.price.count > 0
-      const hasAction = (property: PropertySummary) => property.action === action.value.value
-      const hasBeds = (property: PropertySummary) => property.numBeds === numBeds.value
-      const withinPriceRange = (property: PropertySummary) =>
-        priceRange.value.min <= property.stats.price.median &&
-         (property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
+    const allStationProperties: ComputedRef<StationProperty[]> = computed(() => {
+      return propertyStore.properties.map(property => {
+        const station: TubeStation = tubeStore.postcodeToStations[property.postcode]
+        return { station, property }
+      })
+    })
 
-      properties.value = propertyStore.properties
+    const columns = [
+      { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true },
+      { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true },
+      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.price.median, format: formatPrice, sortable: true },
+      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.price.min, format: formatPrice, sortable: true },
+      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.price.max, format: formatPrice, sortable: true },
+      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.price.q1, format: formatPrice, sortable: true },
+      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.price.q3, format: formatPrice, sortable: true },
+      { name: 'lines', label: 'Lines', field: (row: StationProperty) => row.station.lines, format: (lines: string[]) => lines.join(','), sortable: true, align: 'left' }
+    ]
+
+    function search () {
+      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.price.count > 0
+      const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
+      const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
+      const withinPriceRange = (stationProperty: StationProperty) =>
+        priceRange.value.min <= stationProperty.property.stats.price.median &&
+         (stationProperty.property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
+
+      stationProperties.value = allStationProperties.value
         .filter(hasBeds)
         .filter(hasAction)
         .filter(withinPriceRange)
@@ -99,10 +127,9 @@ export default defineComponent({
       markers.value = updateMarkers()
     }
 
-    function getDetailedTooltipText (property: PropertySummary): string {
+    function getDetailedTooltipText (stationProperty: StationProperty): string {
+      const { station, property } = stationProperty
       if (showDetailedTooltip.value) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const station: TubeStation = tubeStore.postcodeToStations[property.postcode]
         return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
         <table><tbody>
         <tr><td>Avg</td><td>${formatPrice(property.stats.price.median)}</td></tr>
@@ -121,12 +148,13 @@ export default defineComponent({
     }
 
     function updateMarkers (): L.Layer[] {
-      return properties.value.map(property => {
+      return stationProperties.value.map(stationProperty => {
+        const { property } = stationProperty
         if (showDetailedTooltip.value) {
           return new L.CircleMarker(
             { lat: property.coordinates[1], lng: property.coordinates[0] },
-            { radius: 5 }
-          ).bindTooltip(getDetailedTooltipText(property))
+            { radius: 10 }
+          ).bindTooltip(getDetailedTooltipText(stationProperty))
         } else {
           return new L.CircleMarker(
             { lat: property.coordinates[1], lng: property.coordinates[0] },
@@ -143,6 +171,8 @@ export default defineComponent({
       step,
       actionOptions,
       numBedsOptions,
+      paginationOptions,
+      columns,
 
       action,
       numBeds,
@@ -150,6 +180,7 @@ export default defineComponent({
       includeBeyondPriceRange,
       showDetailedTooltip,
 
+      stationProperties,
       markers,
 
       search

@@ -1,7 +1,7 @@
 export interface TubeStation {
      name: string,
-     zone: [number],
+     zone: number[],
      postcode: string,
      coordinates: [number, number],
-     lines: [string]
+     lines: string[]
 }
