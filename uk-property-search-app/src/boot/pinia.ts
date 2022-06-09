@@ -4,10 +4,10 @@ import { usePropertyStore } from '../stores/property'
 import { useSchoolStore } from '../stores/school'
 import { useTubeStore } from '../stores/tube'
 
-export default boot(async ({ app }) => {
+export default boot(({ app }) => {
   app.use(createPinia())
 
-  await Promise.all([
+  void Promise.all([
     usePropertyStore().init(),
     useSchoolStore().init(),
     useTubeStore().init()
