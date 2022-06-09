@@ -6,9 +6,11 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.57"
 async-trait = "0.1.53"
+brotli2 = "0.3.2"
 chrono = "0.4.19"
 clap = { version = "3.1.18", features = ["derive"] }
 config = "0.13.1"
+flate2 = "1.0.24"
 futures = "0.3.21"
 itertools = "0.10.3"
 lazy_static = "1.4.0"

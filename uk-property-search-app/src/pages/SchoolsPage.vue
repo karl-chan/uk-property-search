@@ -14,7 +14,7 @@ q-page(padding)
                   q-btn(v-close-popup='' label='Close' color='primary' flat)
 
   .row.q-my-sm
-    q-btn(label='Search' color='secondary' icon-right='search' @click='search')
+    q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
 
   leaflet-map.map(:markers='markers')
 
@@ -28,6 +28,7 @@ import type { Ref } from 'vue'
 import { defineComponent, ref } from 'vue'
 import { Rating, School } from '../models/school'
 import { useSchoolStore } from '../stores/school'
+import { sleep } from '../util/sleep'
 
 const { getPaletteColor } = colors
 
@@ -42,6 +43,7 @@ export default defineComponent({
     const ratings: Ref<Rating[]> = ref([])
     const cutoffDate: Ref<string> = ref('2006/01/01')
 
+    const isLoading: Ref<boolean> = ref(false)
     const schools: Ref<School[]> = ref(schoolStore.schools)
     const markers: Ref<L.Layer[]> = ref([])
 
@@ -52,15 +54,18 @@ export default defineComponent({
       { label: 'Inadequate', value: Rating.Inadequate }
     ]
 
-    function search () {
+    async function search () {
       const inRating = (school: School) => school.rating !== undefined && ratings.value.includes(school.rating)
       const afterCutoff = (school: School) => date.getDateDiff(school.inspectionDateMs ?? new Date().getTime(), cutoffDate.value, 'seconds') > 0
 
+      isLoading.value = true
       schools.value = schoolStore.schools
         .filter(inRating)
         .filter(afterCutoff)
 
+      await sleep(100)
       markers.value = updateMarkers()
+      isLoading.value = false
     }
 
     function updateMarkers (): L.Layer[] {
@@ -95,6 +100,7 @@ export default defineComponent({
       options,
       ratings,
 
+      isLoading,
       markers,
 
       search
