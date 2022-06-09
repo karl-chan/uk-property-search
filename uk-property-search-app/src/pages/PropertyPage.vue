@@ -11,7 +11,7 @@ q-page(padding)
       q-checkbox(v-model='includeBeyondPriceRange' :label='`Include £${maxPrice}+`')
 
   .row.q-my-sm
-    q-btn(label='Search' color='secondary' icon-right='search' @click='search')
+    q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
     q-checkbox(v-model='showDetailedTooltip' label='Show detailed tooltip')
 
   leaflet-map.map(:markers='markers')
@@ -30,6 +30,7 @@ import { PropertyAction, PropertySummary } from '../models/property'
 import { TubeStation } from '../models/tube'
 import { usePropertyStore } from '../stores/property'
 import { useTubeStore } from '../stores/tube'
+import { sleep } from '../util/sleep'
 
 interface StationProperty {
   station: TubeStation,
@@ -81,6 +82,7 @@ export default defineComponent({
       rowsPerPage: 100
     }
 
+    const isLoading: Ref<boolean> = ref(false)
     const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
     const numBeds: Ref<number> = ref(2)
     const priceRange: Ref<{min: number, max:number}> = ref({
@@ -111,7 +113,7 @@ export default defineComponent({
       { name: 'lines', label: 'Lines', field: (row: StationProperty) => row.station.lines, format: (lines: string[]) => lines.join(','), sortable: true, align: 'left' }
     ]
 
-    function search () {
+    async function search () {
       const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.price.count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
@@ -119,13 +121,16 @@ export default defineComponent({
         priceRange.value.min <= stationProperty.property.stats.price.median &&
          (stationProperty.property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
 
+      isLoading.value = true
       stationProperties.value = allStationProperties.value
         .filter(hasBeds)
         .filter(hasAction)
         .filter(withinPriceRange)
         .filter(isValid)
 
+      await sleep(100)
       markers.value = updateMarkers()
+      isLoading.value = false
     }
 
     function getDetailedTooltipText (stationProperty: StationProperty): string {
@@ -175,6 +180,7 @@ export default defineComponent({
       paginationOptions,
       columns,
 
+      isLoading,
       action,
       numBeds,
       priceRange,
