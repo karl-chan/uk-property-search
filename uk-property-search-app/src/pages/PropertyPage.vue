@@ -110,7 +110,14 @@ export default defineComponent({
       { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.price.q1, format: formatPrice, sortable: true },
       { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.price.q3, format: formatPrice, sortable: true },
       { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.price.count, sortable: true },
-      { name: 'lines', label: 'Lines', field: (row: StationProperty) => row.station.lines, format: (lines: string[]) => lines.join(','), sortable: true, align: 'left' }
+      {
+        name: 'lines',
+        label: 'Lines',
+        field: (row: StationProperty) => row.station.lines.length,
+        format: (count: number, row: StationProperty) => row.station.lines.join(', '),
+        sortable: true,
+        align: 'left'
+      }
     ]
 
     async function search () {
