@@ -156,6 +156,16 @@ export default defineComponent({
       }
     }
 
+    function formatShortPrice (price: number): string {
+      if (price < 1000) {
+        return `£${round(price)}`
+      } else if (price < 1_000_000) {
+        return `£${round(price / 1000)}k`
+      } else {
+        return `£${(price / 1_000_000).toFixed(1)}M`
+      }
+    }
+
     function formatPrice (price: number): string {
       return `£${round(price)}`
     }
@@ -169,10 +179,20 @@ export default defineComponent({
             { radius: 10 }
           ).bindTooltip(getDetailedTooltipText(stationProperty))
         } else {
-          return new L.CircleMarker(
+          return new L.Marker(
             { lat: property.coordinates[1], lng: property.coordinates[0] },
-            { radius: 1 }
-          ).bindTooltip(formatPrice(property.stats.price.median), { permanent: true })
+            {
+              icon: L.icon({
+                iconUrl: `data:image/svg+xml,
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="60" height="20">
+                  <rect width="100%" height="100%" style="fill:white; stroke:black; stroke-width:1;" />
+                  <text x="30" y="15" text-anchor="middle" font-family="sans-serif">${formatShortPrice(property.stats.price.median)}</text>
+                </svg>`,
+                iconSize: [60, 20],
+                iconAnchor: [30, 10]
+              })
+            }
+          )
         }
       }
       )
