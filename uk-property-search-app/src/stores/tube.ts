@@ -14,5 +14,6 @@ export const useTubeStore = defineStore('tube', {
     async init () {
       this.stations = await tubeApi.fetchStations()
     }
-  }
+  },
+  persist: true
 })
