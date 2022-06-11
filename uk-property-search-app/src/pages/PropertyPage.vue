@@ -89,7 +89,7 @@ export default defineComponent({
       min: minPrice,
       max: maxPrice
     })
-    const includeBeyondPriceRange: Ref<boolean> = ref(false)
+    const includeBeyondPriceRange: Ref<boolean> = ref(true)
     const showDetailedTooltip: Ref<boolean> = ref(false)
     const stationProperties: Ref<StationProperty[]> = ref([])
     const markers: Ref<L.Layer[]> = ref([])
