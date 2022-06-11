@@ -272,14 +272,14 @@ impl Rightmove {
 
     pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
         let prices = properties.iter().map(|p| p.price).collect_vec();
-        let days = properties
+        let listed_days = properties
             .iter()
             .map(|p| (Utc::now() - p.post_date).num_days() as f64)
             .collect_vec();
 
         PropertyStats {
             price: Stats::from_vec(&prices),
-            days: Stats::from_vec(&days),
+            listed_days: Stats::from_vec(&listed_days),
         }
     }
 }

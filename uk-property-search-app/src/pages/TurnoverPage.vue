@@ -99,12 +99,12 @@ export default defineComponent({
     const columns = [
       { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
       { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true },
-      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.days.median, format: formatDuration, sortable: true },
-      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.days.min, format: formatDuration, sortable: true },
-      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.days.max, format: formatDuration, sortable: true },
-      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.days.q1, format: formatDuration, sortable: true },
-      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.days.q3, format: formatDuration, sortable: true },
-      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.days.count, sortable: true },
+      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.listedDays.median, format: formatDuration, sortable: true },
+      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.listedDays.min, format: formatDuration, sortable: true },
+      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.listedDays.max, format: formatDuration, sortable: true },
+      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.listedDays.q1, format: formatDuration, sortable: true },
+      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.listedDays.q3, format: formatDuration, sortable: true },
+      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.listedDays.count, sortable: true },
       {
         name: 'lines',
         label: 'Lines',
@@ -116,12 +116,12 @@ export default defineComponent({
     ]
 
     async function search () {
-      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.days.count > 0
+      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.listedDays.count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
       const withinPriceRange = (stationProperty: StationProperty) =>
-        priceRange.value.min <= stationProperty.property.stats.days.median &&
-         (stationProperty.property.stats.days.median <= priceRange.value.max || includeBeyondPriceRange.value)
+        priceRange.value.min <= stationProperty.property.stats.listedDays.median &&
+         (stationProperty.property.stats.listedDays.median <= priceRange.value.max || includeBeyondPriceRange.value)
 
       isLoading.value = true
       stationProperties.value = allStationProperties.value
@@ -140,14 +140,14 @@ export default defineComponent({
       if (showDetailedTooltip.value) {
         return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
         <table><tbody>
-        <tr><td>Avg</td><td>${formatDuration(property.stats.days.median)}</td></tr>
-        <tr><td>Range</td><td>${formatDuration(property.stats.days.min)} - ${formatDuration(property.stats.days.max)}</td></tr>
-        <tr><td>IQR</td><td>${formatDuration(property.stats.days.q1)} - ${formatDuration(property.stats.days.q3)}</td></tr>
-        <tr><td>Count</td><td>${property.stats.days.count}</td></tr>
+        <tr><td>Avg</td><td>${formatDuration(property.stats.listedDays.median)}</td></tr>
+        <tr><td>Range</td><td>${formatDuration(property.stats.listedDays.min)} - ${formatDuration(property.stats.listedDays.max)}</td></tr>
+        <tr><td>IQR</td><td>${formatDuration(property.stats.listedDays.q1)} - ${formatDuration(property.stats.listedDays.q3)}</td></tr>
+        <tr><td>Count</td><td>${property.stats.listedDays.count}</td></tr>
         <tr><td>Lines</td><td><ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul></td></tr>
         </tbody></table>`
       } else {
-        return formatDuration(property.stats.days.median)
+        return formatDuration(property.stats.listedDays.median)
       }
     }
 
@@ -177,7 +177,7 @@ export default defineComponent({
                 iconUrl: `data:image/svg+xml,
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
                   <rect width="100%" height="100%" style="fill:white; stroke:black; stroke-width:1;" />
-                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatDuration(property.stats.days.median)}</text>
+                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatDuration(property.stats.listedDays.median)}</text>
                 </svg>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height / 2]
