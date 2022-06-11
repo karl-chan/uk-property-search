@@ -18,7 +18,7 @@ q-page(padding)
   leaflet-map.map(:markers='markers')
 
   .row.q-my-sm
-    q-table(title='Property prices' :rows='stationProperties' :columns='columns' :filter='tableFilter' :pagination='paginationOptions' row-key='postcode')
+    q-table(title='Listings age' :rows='stationProperties' :columns='columns' :filter='tableFilter' :pagination='paginationOptions' row-key='postcode')
       template(v-slot:top-right)
         q-input(borderless dense debounce='300' v-model='tableFilter' placeholder='Search')
           template(v-slot:append)
