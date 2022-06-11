@@ -15,7 +15,7 @@ export interface Stats {
 
 export interface PropertyStats {
   price: Stats,
-  postDate: Stats,
+  days: Stats,
 }
 
 export interface PropertySummary {

@@ -33,6 +33,11 @@ export default defineComponent({
         link: '/property'
       },
       {
+        icon: 'hourglass_top',
+        label: 'Turnover',
+        link: '/turnover'
+      },
+      {
         icon: 'school',
         label: 'Schools',
         link: '/schools'

@@ -29,6 +29,7 @@ pub struct RightmoveProperty {
     square_feet: Option<i32>,
     post_date: DateTime<Utc>,
     reduced_date: Option<DateTime<Utc>>,
+    transacted: bool,
 }
 
 impl Rightmove {
@@ -111,6 +112,7 @@ impl Rightmove {
             first_visible_date: String,
             listing_update: ListingUpdateResponse,
             property_sub_type: String,
+            display_status: String,
         }
 
         #[derive(Debug, Serialize, Deserialize)]
@@ -158,6 +160,7 @@ impl Rightmove {
                 ("radius", &radius.to_string()),
                 ("index", &pagination_index.to_string()),
                 ("includeSSTC", "true"),
+                ("includeLetAgreed", "true"),
                 ("viewType", "LIST"),
                 (
                     "channel",
@@ -169,13 +172,21 @@ impl Rightmove {
                 ("areaSizeUnit", "sqft"),
                 ("currencyCode", "GBP"),
             ];
-            let response: SearchResponse = _self
-                .http
-                .get_with_options(url, query, true)
-                .await?
-                .json_or_err()
-                .await?;
-            Ok(response)
+            // Sometimes rightmove returns 400, so we allow retries.
+            let mut remaining_tries = 3;
+            loop {
+                let result = _self
+                    .http
+                    .get_with_options(url, query, true)
+                    .await?
+                    .json_or_err()
+                    .await;
+                remaining_tries = remaining_tries - 1;
+
+                if result.as_ref().is_ok() || remaining_tries == 0 {
+                    return result;
+                }
+            }
         }
 
         let response =
@@ -252,6 +263,8 @@ impl Rightmove {
                             .map(|date| parse_date(&date)),
                         _ => None,
                     }),
+                transacted: property.display_status == "Sold STC"
+                    || property.display_status == "Let agreed",
             })
             .collect();
         Ok(properties)
@@ -259,14 +272,14 @@ impl Rightmove {
 
     pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
         let prices = properties.iter().map(|p| p.price).collect_vec();
-        let post_dates_ms = properties
+        let days = properties
             .iter()
-            .map(|p| p.post_date.timestamp_millis() as f64)
+            .map(|p| (Utc::now() - p.post_date).num_days() as f64)
             .collect_vec();
 
         PropertyStats {
             price: Stats::from_vec(&prices),
-            post_date: Stats::from_vec(&post_dates_ms),
+            days: Stats::from_vec(&days),
         }
     }
 }

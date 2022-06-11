@@ -11,7 +11,7 @@ pub enum PropertyAction {
 #[serde(rename_all = "camelCase")]
 pub struct PropertyStats {
     pub price: Stats,
-    pub post_date: Stats,
+    pub days: Stats, // how long the advert has been on the market
 }
 
 #[derive(Debug, Serialize, Deserialize)]
