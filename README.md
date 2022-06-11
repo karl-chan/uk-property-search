@@ -1,1 +1,1 @@
-![Screenshot](readme/screenshot.png)
+![Screenshot](readme/screenshot.jpg)
