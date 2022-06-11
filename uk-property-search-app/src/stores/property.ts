@@ -12,5 +12,6 @@ export const usePropertyStore = defineStore('property', {
     async init () {
       this.properties = await propertyApi.fetchProperties()
     }
-  }
+  },
+  persist: true
 })

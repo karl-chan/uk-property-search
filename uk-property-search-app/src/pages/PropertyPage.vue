@@ -157,7 +157,7 @@ export default defineComponent({
     }
 
     function formatShortPrice (price: number): string {
-      if (price < 1000) {
+      if (price < 10000) {
         return `£${round(price)}`
       } else if (price < 1_000_000) {
         return `£${round(price / 1000)}k`

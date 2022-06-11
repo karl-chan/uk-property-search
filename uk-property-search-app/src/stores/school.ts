@@ -10,5 +10,6 @@ export const useSchoolStore = defineStore('school', {
     async init () {
       this.schools = await schoolsApi.fetchSchools()
     }
-  }
+  },
+  persist: true
 })
