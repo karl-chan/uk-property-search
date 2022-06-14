@@ -6,10 +6,10 @@ q-page(padding)
     .col-1
       q-select(v-model='action' :options='actionOptions', label='Action')
     .col
-      q-range(v-model='priceRange' :min='minDuration' :max='maxDuration' label-always
-             :left-label-value='formatDuration(priceRange.min)' :right-label-value='formatDuration(priceRange.max)')
+      q-range(v-model='durationRange' :min='minDuration' :max='maxDuration' :step='step' label-always markers
+             :left-label-value='formatSliderLabel(durationRange.min)' :right-label-value='formatSliderLabel(durationRange.max)')
     .col-shrink
-      q-checkbox(v-model='includeBeyondPriceRange' :label='`Include ${formatDuration(maxDuration)}+`')
+      q-checkbox(v-model='includeBeyondDurationRange' :label='`Include ${formatSliderLabel(maxDuration)}+`')
 
   .row.q-my-sm
     q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
@@ -41,6 +41,12 @@ interface StationProperty {
   property : PropertySummary
 }
 
+interface ConversionOptions {
+  multiplier: number,
+  shortUnit: string,
+  unit: string
+}
+
 export default defineComponent({
   name: 'TurnoverPage',
   components: {
@@ -51,14 +57,16 @@ export default defineComponent({
     const propertyStore = usePropertyStore()
 
     const minDuration = 0
-    const maxDuration: ComputedRef<number> = computed(() => {
+    const maxDuration = 24
+    const step = 1
+    const conversion: ComputedRef<ConversionOptions> = computed(() => {
       switch (action.value.value) {
       case PropertyAction.Buy:
-        return 720
+        return { multiplier: 30, shortUnit: 'mths', unit: 'months' }
       case PropertyAction.Rent:
-        return 84
+        return { multiplier: 7, shortUnit: 'wks', unit: 'weeks' }
       default:
-        return 0
+        return { multiplier: 0, shortUnit: '', unit: '' }
       }
     })
     const actionOptions = [
@@ -79,11 +87,11 @@ export default defineComponent({
     const isLoading: Ref<boolean> = ref(false)
     const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
     const numBeds: Ref<number> = ref(2)
-    const priceRange: Ref<{min: number, max:number}> = ref({
+    const durationRange: Ref<{min: number, max:number}> = ref({
       min: minDuration,
       max: maxDuration
     })
-    const includeBeyondPriceRange: Ref<boolean> = ref(true)
+    const includeBeyondDurationRange: Ref<boolean> = ref(true)
     const showDetailedTooltip: Ref<boolean> = ref(false)
     const tableFilter: Ref<string> = ref('')
     const stationProperties: Ref<StationProperty[]> = ref([])
@@ -119,15 +127,18 @@ export default defineComponent({
       const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.listedDays.count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
-      const withinPriceRange = (stationProperty: StationProperty) =>
-        priceRange.value.min <= stationProperty.property.stats.listedDays.median &&
-         (stationProperty.property.stats.listedDays.median <= priceRange.value.max || includeBeyondPriceRange.value)
+      const withinDurationRange = (stationProperty: StationProperty) => {
+        const minDays = durationRange.value.min * conversion.value.multiplier
+        const maxDays = durationRange.value.max * conversion.value.multiplier
+        return minDays <= stationProperty.property.stats.listedDays.median &&
+         (stationProperty.property.stats.listedDays.median <= maxDays || includeBeyondDurationRange.value)
+      }
 
       isLoading.value = true
       stationProperties.value = allStationProperties.value
         .filter(hasBeds)
         .filter(hasAction)
-        .filter(withinPriceRange)
+        .filter(withinDurationRange)
         .filter(isValid)
 
       await sleep(100)
@@ -151,12 +162,25 @@ export default defineComponent({
       }
     }
 
+    function formatSliderLabel (sliderValue: number) {
+      return `${sliderValue} ${conversion.value.unit}`
+    }
+
+    function formatShortDuration (days: number): string {
+      switch (action.value.value) {
+      case PropertyAction.Buy:
+        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.shortUnit}`
+      case PropertyAction.Rent:
+        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.shortUnit}`
+      }
+    }
+
     function formatDuration (days: number): string {
       switch (action.value.value) {
       case PropertyAction.Buy:
-        return `${(days / 30).toFixed(1)} months`
+        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.unit}`
       case PropertyAction.Rent:
-        return `${(days / 7).toFixed(1)} weeks`
+        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.unit}`
       }
     }
 
@@ -169,7 +193,7 @@ export default defineComponent({
             { radius: 10 }
           ).bindTooltip(getDetailedTooltipText(stationProperty))
         } else {
-          const width = 100, height = 20
+          const width = 70, height = 20
           return new L.Marker(
             { lat: property.coordinates[1], lng: property.coordinates[0] },
             {
@@ -177,7 +201,7 @@ export default defineComponent({
                 iconUrl: `data:image/svg+xml,
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
                   <rect width="100%" height="100%" style="fill:white; stroke:black; stroke-width:1;" />
-                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatDuration(property.stats.listedDays.median)}</text>
+                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatShortDuration(property.stats.listedDays.median)}</text>
                 </svg>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height / 2]
@@ -185,13 +209,13 @@ export default defineComponent({
             }
           )
         }
-      }
-      )
+      })
     }
 
     return {
       minDuration,
       maxDuration,
+      step,
       actionOptions,
       numBedsOptions,
       paginationOptions,
@@ -200,14 +224,16 @@ export default defineComponent({
       isLoading,
       action,
       numBeds,
-      priceRange,
-      includeBeyondPriceRange,
+      durationRange,
+      includeBeyondDurationRange,
       showDetailedTooltip,
       tableFilter,
 
       stationProperties,
       markers,
 
+      formatSliderLabel,
+      formatShortDuration,
       formatDuration,
       search
     }
