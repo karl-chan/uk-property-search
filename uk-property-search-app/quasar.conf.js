@@ -175,7 +175,7 @@ module.exports = configure(function (ctx) {
         short_name: 'UK Property Search App',
         description: '',
         display: 'fullscreen',
-        orientation: 'portrait',
+        orientation: 'any',
         background_color: '#ffffff',
         theme_color: '#027be3',
         icons: [
