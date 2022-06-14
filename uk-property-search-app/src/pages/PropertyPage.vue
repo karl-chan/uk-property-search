@@ -108,7 +108,7 @@ export default defineComponent({
 
     const columns = [
       { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
-      { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true },
+      { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true, sort: sortZones },
       { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.price.median, format: formatPrice, sortable: true },
       { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.price.min, format: formatPrice, sortable: true },
       { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.price.max, format: formatPrice, sortable: true },
@@ -173,6 +173,10 @@ export default defineComponent({
 
     function formatPrice (price: number): string {
       return `£${round(price)}`
+    }
+
+    function sortZones (a: string, b: string): number {
+      return parseInt(a, 10) - parseInt(b, 10)
     }
 
     function updateMarkers (): L.Layer[] {
