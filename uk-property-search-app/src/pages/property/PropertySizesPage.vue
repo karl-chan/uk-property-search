@@ -1,3 +1,4 @@
+
 <template lang='pug'>
 q-page(padding)
   .row.q-gutter-x-lg.items-end
@@ -6,9 +7,10 @@ q-page(padding)
     .col-1
       q-select(v-model='action' :options='actionOptions', label='Action')
     .col
-      q-range(v-model='priceRange' :min='minPrice' :max='maxPrice' :step='step' label-always markers)
+      q-range(v-model='sizeRange' :min='minSize' :max='maxSize' :step='step' label-always markers
+             :left-label-value='formatSliderLabel(sizeRange.min)' :right-label-value='formatSliderLabel(sizeRange.max)')
     .col-shrink
-      q-checkbox(v-model='includeBeyondPriceRange' :label='`Include £${maxPrice}+`')
+      q-checkbox(v-model='includeBeyondSizeRange' :label='`Include ${formatSliderLabel(maxSize)}+`')
 
   .row.q-my-sm
     q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
@@ -17,7 +19,7 @@ q-page(padding)
   leaflet-map.map(:markers='markers')
 
   .row.q-my-sm
-    q-table(title="Property prices" :rows='stationProperties' :columns='columns' :filter='tableFilter' :pagination='paginationOptions' row-key='postcode')
+    q-table(title="Property sizes" :rows='stationProperties' :columns='columns' :filter='tableFilter' :pagination='paginationOptions' row-key='postcode')
       template(v-slot:top-right)
         q-input(borderless dense debounce='300' v-model='tableFilter' placeholder='Search')
           template(v-slot:append)
@@ -30,11 +32,11 @@ import L from 'leaflet'
 import { round } from 'lodash'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
-import { PropertyAction, PropertySummary } from '../models/property'
-import { TubeStation } from '../models/tube'
-import { usePropertyStore } from '../stores/property'
-import { useTubeStore } from '../stores/tube'
-import { sleep } from '../util/sleep'
+import { PropertyAction, PropertySummary } from '../../models/property'
+import { TubeStation } from '../../models/tube'
+import { usePropertyStore } from '../../stores/property'
+import { useTubeStore } from '../../stores/tube'
+import { sleep } from '../../util/sleep'
 
 interface StationProperty {
   station: TubeStation,
@@ -42,7 +44,7 @@ interface StationProperty {
 }
 
 export default defineComponent({
-  name: 'PropertyPage',
+  name: 'PropertySizesPage',
   components: {
     LeafletMap
   },
@@ -50,27 +52,9 @@ export default defineComponent({
     const tubeStore = useTubeStore()
     const propertyStore = usePropertyStore()
 
-    const minPrice = 0
-    const maxPrice: ComputedRef<number> = computed(() => {
-      switch (action.value.value) {
-      case PropertyAction.Buy:
-        return 2_000_000
-      case PropertyAction.Rent:
-        return 4_000
-      default:
-        return 0
-      }
-    })
-    const step: ComputedRef<number> = computed(() => {
-      switch (action.value.value) {
-      case PropertyAction.Buy:
-        return 50_000
-      case PropertyAction.Rent:
-        return 100
-      default:
-        return 0
-      }
-    })
+    const minSize = 0
+    const maxSize = 1000
+    const step = 100
     const actionOptions = [
       {
         label: 'Buy',
@@ -89,11 +73,11 @@ export default defineComponent({
     const isLoading: Ref<boolean> = ref(false)
     const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
     const numBeds: Ref<number> = ref(2)
-    const priceRange: Ref<{min: number, max:number}> = ref({
-      min: minPrice,
-      max: maxPrice
+    const sizeRange: Ref<{min: number, max:number}> = ref({
+      min: minSize,
+      max: maxSize
     })
-    const includeBeyondPriceRange: Ref<boolean> = ref(true)
+    const includeBeyondSizeRange: Ref<boolean> = ref(true)
     const showDetailedTooltip: Ref<boolean> = ref(false)
     const tableFilter: Ref<string> = ref('')
     const stationProperties: Ref<StationProperty[]> = ref([])
@@ -109,12 +93,12 @@ export default defineComponent({
     const columns = [
       { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
       { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true, sort: sortZones },
-      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.price.median, format: formatPrice, sortable: true },
-      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.price.min, format: formatPrice, sortable: true },
-      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.price.max, format: formatPrice, sortable: true },
-      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.price.q1, format: formatPrice, sortable: true },
-      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.price.q3, format: formatPrice, sortable: true },
-      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.price.count, sortable: true },
+      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.squareFeet.median, format: formatSize, sortable: true },
+      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.squareFeet.min, format: formatSize, sortable: true },
+      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.squareFeet.max, format: formatSize, sortable: true },
+      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.squareFeet.q1, format: formatSize, sortable: true },
+      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.squareFeet.q3, format: formatSize, sortable: true },
+      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.squareFeet.count, sortable: true },
       {
         name: 'lines',
         label: 'Lines',
@@ -126,18 +110,18 @@ export default defineComponent({
     ]
 
     async function search () {
-      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.price.count > 0
+      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.squareFeet.count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
-      const withinPriceRange = (stationProperty: StationProperty) =>
-        priceRange.value.min <= stationProperty.property.stats.price.median &&
-         (stationProperty.property.stats.price.median <= priceRange.value.max || includeBeyondPriceRange.value)
+      const withinSizeRange = (stationProperty: StationProperty) =>
+        sizeRange.value.min <= stationProperty.property.stats.squareFeet.median &&
+         (stationProperty.property.stats.squareFeet.median <= sizeRange.value.max || includeBeyondSizeRange.value)
 
       isLoading.value = true
       stationProperties.value = allStationProperties.value
         .filter(hasBeds)
         .filter(hasAction)
-        .filter(withinPriceRange)
+        .filter(withinSizeRange)
         .filter(isValid)
 
       await sleep(100)
@@ -150,29 +134,27 @@ export default defineComponent({
       if (showDetailedTooltip.value) {
         return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
         <table><tbody>
-        <tr><td>Avg</td><td>${formatPrice(property.stats.price.median)}</td></tr>
-        <tr><td>Range</td><td>${formatPrice(property.stats.price.min)} - ${formatPrice(property.stats.price.max)}</td></tr>
-        <tr><td>IQR</td><td>${formatPrice(property.stats.price.q1)} - ${formatPrice(property.stats.price.q3)}</td></tr>
-        <tr><td>Count</td><td>${property.stats.price.count}</td></tr> 
+        <tr><td>Avg</td><td>${formatSize(property.stats.squareFeet.median)}</td></tr>
+        <tr><td>Range</td><td>${formatSize(property.stats.squareFeet.min)} - ${formatSize(property.stats.squareFeet.max)}</td></tr>
+        <tr><td>IQR</td><td>${formatSize(property.stats.squareFeet.q1)} - ${formatSize(property.stats.squareFeet.q3)}</td></tr>
+        <tr><td>Count</td><td>${property.stats.squareFeet.count}</td></tr> 
         <tr><td>Lines</td><td><ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul></td></tr>
         </tbody></table>`
       } else {
-        return formatPrice(property.stats.price.median)
+        return formatSize(property.stats.squareFeet.median)
       }
     }
 
-    function formatShortPrice (price: number): string {
-      if (price < 10000) {
-        return `£${round(price)}`
-      } else if (price < 1_000_000) {
-        return `£${round(price / 1000)}k`
-      } else {
-        return `£${(price / 1_000_000).toFixed(1)}M`
-      }
+    function formatSliderLabel (sliderValue: number) {
+      return `${sliderValue} sq. ft.`
     }
 
-    function formatPrice (price: number): string {
-      return `£${round(price)}`
+    function formatShortSize (size: number): string {
+      return `${round(size)} sf`
+    }
+
+    function formatSize (size: number): string {
+      return `${round(size)} sq. ft.`
     }
 
     function sortZones (a: string, b: string): number {
@@ -196,7 +178,7 @@ export default defineComponent({
                 iconUrl: `data:image/svg+xml,
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
                   <rect width="100%" height="100%" style="fill:white; stroke:black; stroke-width:1;" />
-                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatShortPrice(property.stats.price.median)}</text>
+                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatShortSize(property.stats.squareFeet.median)}</text>
                 </svg>`,
                 iconSize: [width, height],
                 iconAnchor: [width / 2, height / 2]
@@ -209,8 +191,8 @@ export default defineComponent({
     }
 
     return {
-      minPrice,
-      maxPrice,
+      minSize,
+      maxSize,
       step,
       actionOptions,
       numBedsOptions,
@@ -220,14 +202,15 @@ export default defineComponent({
       isLoading,
       action,
       numBeds,
-      priceRange,
-      includeBeyondPriceRange,
+      sizeRange,
+      includeBeyondSizeRange,
       showDetailedTooltip,
       tableFilter,
 
       stationProperties,
       markers,
 
+      formatSliderLabel,
       search
     }
   }

@@ -16,6 +16,7 @@ export interface Stats {
 export interface PropertyStats {
   price: Stats,
   listedDays: Stats,
+  squareFeet: Stats,
 }
 
 export interface PropertySummary {

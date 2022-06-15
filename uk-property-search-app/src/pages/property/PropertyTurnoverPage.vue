@@ -30,11 +30,11 @@ import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
-import { PropertyAction, PropertySummary } from '../models/property'
-import { TubeStation } from '../models/tube'
-import { usePropertyStore } from '../stores/property'
-import { useTubeStore } from '../stores/tube'
-import { sleep } from '../util/sleep'
+import { PropertyAction, PropertySummary } from '../../models/property'
+import { TubeStation } from '../../models/tube'
+import { usePropertyStore } from '../../stores/property'
+import { useTubeStore } from '../../stores/tube'
+import { sleep } from '../../util/sleep'
 
 interface StationProperty {
   station: TubeStation,
@@ -48,7 +48,7 @@ interface ConversionOptions {
 }
 
 export default defineComponent({
-  name: 'TurnoverPage',
+  name: 'PropertyTurnoverPage',
   components: {
     LeafletMap
   },

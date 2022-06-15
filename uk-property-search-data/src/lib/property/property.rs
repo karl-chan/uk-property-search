@@ -12,6 +12,7 @@ pub enum PropertyAction {
 pub struct PropertyStats {
     pub price: Stats,
     pub listed_days: Stats, // how long the advert has been on the market
+    pub square_feet: Stats,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
