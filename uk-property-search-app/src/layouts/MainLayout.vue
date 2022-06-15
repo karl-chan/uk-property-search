@@ -28,14 +28,19 @@ export default defineComponent({
     const leftDrawerOpen = ref(false)
     const menuList = [
       {
-        icon: 'apartment',
-        label: 'Property',
-        link: '/property'
+        icon: 'currency_pound',
+        label: 'Prices',
+        link: '/property/prices'
       },
       {
-        icon: 'hourglass_top',
+        icon: 'square_foot',
+        label: 'Sizes',
+        link: '/property/sizes'
+      },
+      {
+        icon: 'timer',
         label: 'Turnover',
-        link: '/turnover'
+        link: '/property/turnover'
       },
       {
         icon: 'school',

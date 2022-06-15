@@ -276,10 +276,15 @@ impl Rightmove {
             .iter()
             .map(|p| (Utc::now() - p.post_date).num_days() as f64)
             .collect_vec();
+        let square_feet = properties
+            .iter()
+            .filter_map(|p| p.square_feet)
+            .collect_vec();
 
         PropertyStats {
             price: Stats::from_vec(&prices),
             listed_days: Stats::from_vec(&listed_days),
+            square_feet: Stats::from_vec(&square_feet),
         }
     }
 }
