@@ -1,9 +1,9 @@
 <template lang='pug'>
 q-page(padding)
-  .row.q-gutter-x-lg.items-end
-    .col-1
+  .row.q-col-gutter-x-lg.items-end
+    .col-6.col-sm-1
       q-select(v-model='numBeds' :options='numBedsOptions' label='Beds')
-    .col-1
+    .col-6.col-sm-1
       q-select(v-model='action' :options='actionOptions', label='Action')
     .col
       q-range(v-model='durationRange' :min='minDuration' :max='maxDuration' :step='step' label-always markers
