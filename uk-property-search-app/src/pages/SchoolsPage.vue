@@ -1,6 +1,6 @@
 <template lang='pug'>
 q-page(padding)
-  .row.q-gutter-x-lg
+  .row.q-col-gutter-x-lg
     .col-grow
       q-option-group(v-model='ratings' :options='options' color='green' type='checkbox' inline)
     .col
