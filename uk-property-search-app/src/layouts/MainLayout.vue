@@ -7,12 +7,13 @@ q-layout(view='hHh Lpr lFr')
   q-drawer.bg-grey-1(v-model="leftDrawerOpen" show-if-above bordered)
     q-scroll-area.fit
       q-list
-        q-item-label.text-grey-8(header) Research
-        template(v-for='(menuItem, index) in menuList' :key='index')
-          q-item(:to='menuItem.link' exact)
-            q-item-section(avatar)
-              q-icon(:name='menuItem.icon')
-            q-item-section {{menuItem.label}}
+        template(v-for='menuSection in menuList' :key='menuSection.section')
+          q-item-label.text-grey-8(header) {{menuSection.section}}
+          template(v-for='(menuItem, index) in menuSection.children' :key='index')
+            q-item(:to='menuItem.link' exact)
+              q-item-section(avatar)
+                q-icon(:name='menuItem.icon')
+              q-item-section {{menuItem.label}}
 
   q-page-container
     router-view
@@ -28,24 +29,32 @@ export default defineComponent({
     const leftDrawerOpen = ref(false)
     const menuList = [
       {
-        icon: 'currency_pound',
-        label: 'Prices',
-        link: '/property/prices'
-      },
-      {
-        icon: 'square_foot',
-        label: 'Sizes',
-        link: '/property/sizes'
-      },
-      {
-        icon: 'timer',
-        label: 'Turnover',
-        link: '/property/turnover'
-      },
-      {
-        icon: 'school',
-        label: 'Schools',
-        link: '/schools'
+        section: 'Property',
+        children: [
+          {
+            icon: 'currency_pound',
+            label: 'Prices',
+            link: '/property/prices'
+          },
+          {
+            icon: 'square_foot',
+            label: 'Sizes',
+            link: '/property/sizes'
+          },
+          {
+            icon: 'timer',
+            label: 'Turnover',
+            link: '/property/turnover'
+          }
+        ]
+      }, {
+        section: 'Schools',
+        children: [{
+          icon: 'school',
+          label: 'Ratings',
+          link: '/schools'
+        }
+        ]
       }
     ]
 
