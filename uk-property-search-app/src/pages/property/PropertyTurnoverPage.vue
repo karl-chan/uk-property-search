@@ -1,252 +1,74 @@
 <template lang='pug'>
-q-page(padding)
-  .row.q-col-gutter-x-lg.items-end
-    .col-6.col-sm-1
-      q-select(v-model='numBeds' :options='numBedsOptions' label='Beds')
-    .col-6.col-sm-1
-      q-select(v-model='action' :options='actionOptions', label='Action')
-    .col
-      q-range(v-model='durationRange' :min='minDuration' :max='maxDuration' :step='step' label-always markers
-             :left-label-value='formatSliderLabel(durationRange.min)' :right-label-value='formatSliderLabel(durationRange.max)')
-    .col-shrink
-      q-checkbox(v-model='includeBeyondDurationRange' :label='`Include ${formatSliderLabel(maxDuration)}+`')
-
-  .row.q-my-sm
-    q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
-    q-checkbox(v-model='showDetailedTooltip' label='Show detailed tooltip')
-
-  leaflet-map.map(:markers='markers')
-
-  .row.q-my-sm
-    q-table(title='Listings age' :rows='stationProperties' :columns='columns' :filter='tableFilter' :pagination='paginationOptions' row-key='postcode')
-      template(v-slot:top-right)
-        q-input(borderless dense debounce='300' v-model='tableFilter' placeholder='Search')
-          template(v-slot:append)
-            q-icon(name='search')
+property-stats-layout(
+  title='Listings age'
+  :stats-getter='statsGetter'
+  :slider-options='sliderOptions'
+  :format-options='formatOptions'
+)
 </template>
 
 <script lang="ts">
-import LeafletMap from 'components/LeafletMap.vue'
-import L from 'leaflet'
-import type { ComputedRef, Ref } from 'vue'
-import { computed, defineComponent, ref } from 'vue'
-import { PropertyAction, PropertySummary } from '../../models/property'
-import { TubeStation } from '../../models/tube'
-import { usePropertyStore } from '../../stores/property'
-import { useTubeStore } from '../../stores/tube'
-import { sleep } from '../../util/sleep'
-
-interface StationProperty {
-  station: TubeStation,
-  property : PropertySummary
-}
-
-interface ConversionOptions {
-  multiplier: number,
-  shortUnit: string,
-  unit: string
-}
+import PropertyStatsLayout, { FormatOptions, SliderOptions } from 'layouts/PropertyStatsLayout.vue'
+import { defineComponent } from 'vue'
+import { PropertyAction, PropertySummary, Stats } from '../../models/property'
 
 export default defineComponent({
   name: 'PropertyTurnoverPage',
   components: {
-    LeafletMap
+    PropertyStatsLayout
   },
   setup () {
-    const tubeStore = useTubeStore()
-    const propertyStore = usePropertyStore()
-
-    const minDuration = 0
-    const maxDuration = 24
-    const step = 1
-    const conversion: ComputedRef<ConversionOptions> = computed(() => {
-      switch (action.value.value) {
-      case PropertyAction.Buy:
-        return { multiplier: 30, shortUnit: 'mths', unit: 'months' }
-      case PropertyAction.Rent:
-        return { multiplier: 7, shortUnit: 'wks', unit: 'weeks' }
-      default:
-        return { multiplier: 0, shortUnit: '', unit: '' }
-      }
-    })
-    const actionOptions = [
-      {
-        label: 'Buy',
-        value: PropertyAction.Buy
-      },
-      {
-        label: 'Rent',
-        value: PropertyAction.Rent
-      }
-    ]
-    const numBedsOptions = [0, 1, 2, 3] // Only consider Studio - 3 bedroom flats
-    const paginationOptions = {
-      rowsPerPage: 100
+    function statsGetter (property:PropertySummary): Stats {
+      return property.stats.listedDays
     }
-
-    const isLoading: Ref<boolean> = ref(false)
-    const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
-    const numBeds: Ref<number> = ref(2)
-    const durationRange: Ref<{min: number, max:number}> = ref({
-      min: minDuration,
-      max: maxDuration
-    })
-    const includeBeyondDurationRange: Ref<boolean> = ref(true)
-    const showDetailedTooltip: Ref<boolean> = ref(false)
-    const tableFilter: Ref<string> = ref('')
-    const stationProperties: Ref<StationProperty[]> = ref([])
-    const markers: Ref<L.Layer[]> = ref([])
-
-    const allStationProperties: ComputedRef<StationProperty[]> = computed(() => {
-      return propertyStore.properties.map(property => {
-        const station: TubeStation = tubeStore.postcodeToStations[property.postcode]
-        return { station, property }
-      })
-    })
-
-    const columns = [
-      { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
-      { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true, sort: sortZones },
-      { name: 'median', label: 'Median', field: (row: StationProperty) => row.property.stats.listedDays.median, format: formatDuration, sortable: true },
-      { name: 'min', label: 'Min', field: (row: StationProperty) => row.property.stats.listedDays.min, format: formatDuration, sortable: true },
-      { name: 'max', label: 'Max', field: (row: StationProperty) => row.property.stats.listedDays.max, format: formatDuration, sortable: true },
-      { name: 'q1', label: 'Q1', field: (row: StationProperty) => row.property.stats.listedDays.q1, format: formatDuration, sortable: true },
-      { name: 'q3', label: 'Q3', field: (row: StationProperty) => row.property.stats.listedDays.q3, format: formatDuration, sortable: true },
-      { name: 'count', label: 'Count', field: (row: StationProperty) => row.property.stats.listedDays.count, sortable: true },
-      {
-        name: 'lines',
-        label: 'Lines',
-        field: (row: StationProperty) => row.station.lines.length,
-        format: (count: number, row: StationProperty) => row.station.lines.join(', '),
-        sortable: true,
-        align: 'left'
-      }
-    ]
-
-    async function search () {
-      const isValid = (stationProperty: StationProperty) => stationProperty.property.stats.listedDays.count > 0
-      const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
-      const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
-      const withinDurationRange = (stationProperty: StationProperty) => {
-        const minDays = durationRange.value.min * conversion.value.multiplier
-        const maxDays = durationRange.value.max * conversion.value.multiplier
-        return minDays <= stationProperty.property.stats.listedDays.median &&
-         (stationProperty.property.stats.listedDays.median <= maxDays || includeBeyondDurationRange.value)
-      }
-
-      isLoading.value = true
-      stationProperties.value = allStationProperties.value
-        .filter(hasBeds)
-        .filter(hasAction)
-        .filter(withinDurationRange)
-        .filter(isValid)
-
-      await sleep(100)
-      markers.value = updateMarkers()
-      isLoading.value = false
-    }
-
-    function getDetailedTooltipText (stationProperty: StationProperty): string {
-      const { station, property } = stationProperty
-      if (showDetailedTooltip.value) {
-        return `<b>${station.name}</b> (Zone ${station.zone.toString()})<br>
-        <table><tbody>
-        <tr><td>Avg</td><td>${formatDuration(property.stats.listedDays.median)}</td></tr>
-        <tr><td>Range</td><td>${formatDuration(property.stats.listedDays.min)} - ${formatDuration(property.stats.listedDays.max)}</td></tr>
-        <tr><td>IQR</td><td>${formatDuration(property.stats.listedDays.q1)} - ${formatDuration(property.stats.listedDays.q3)}</td></tr>
-        <tr><td>Count</td><td>${property.stats.listedDays.count}</td></tr>
-        <tr><td>Lines</td><td><ul>${station.lines.map(l => `<li>${l}</li>`).join('')}</ul></td></tr>
-        </tbody></table>`
-      } else {
-        return formatDuration(property.stats.listedDays.median)
-      }
-    }
-
-    function formatSliderLabel (sliderValue: number) {
-      return `${sliderValue} ${conversion.value.unit}`
-    }
-
-    function formatShortDuration (days: number): string {
-      switch (action.value.value) {
-      case PropertyAction.Buy:
-        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.shortUnit}`
-      case PropertyAction.Rent:
-        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.shortUnit}`
-      }
-    }
-
-    function formatDuration (days: number): string {
-      switch (action.value.value) {
-      case PropertyAction.Buy:
-        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.unit}`
-      case PropertyAction.Rent:
-        return `${(days / conversion.value.multiplier).toFixed(1)} ${conversion.value.unit}`
-      }
-    }
-
-    function sortZones (a: string, b: string): number {
-      return parseInt(a, 10) - parseInt(b, 10)
-    }
-
-    function updateMarkers (): L.Layer[] {
-      return stationProperties.value.map(stationProperty => {
-        const { property } = stationProperty
-        if (showDetailedTooltip.value) {
-          return new L.CircleMarker(
-            { lat: property.coordinates[1], lng: property.coordinates[0] },
-            { radius: 10 }
-          ).bindTooltip(getDetailedTooltipText(stationProperty))
-        } else {
-          const width = 70, height = 20
-          return new L.Marker(
-            { lat: property.coordinates[1], lng: property.coordinates[0] },
-            {
-              icon: L.icon({
-                iconUrl: `data:image/svg+xml,
-                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
-                  <rect width="100%" height="100%" style="fill:white; stroke:black; stroke-width:1;" />
-                  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" alignment-baseline="central" font-family="sans-serif">${formatShortDuration(property.stats.listedDays.median)}</text>
-                </svg>`,
-                iconSize: [width, height],
-                iconAnchor: [width / 2, height / 2]
-              })
-            }
-          )
+    const sliderOptions: SliderOptions = {
+      [PropertyAction.Buy]: {
+        min: 0,
+        max: 24,
+        step: 1,
+        multiplier: 30,
+        formatter (value: number): string {
+          return `${value} months`
         }
-      })
+      },
+      [PropertyAction.Rent]: {
+        min: 0,
+        max: 24,
+        step: 1,
+        multiplier: 7,
+        formatter (value: number): string {
+          return `${value} weeks`
+        }
+      }
+    }
+    const formatOptions: FormatOptions = {
+      [PropertyAction.Buy]: {
+        formatShortValue (value: number): string {
+          return `${(value / 30).toFixed(1)} mths`
+        },
+        formatValue (value: number): string {
+          return `${(value / 30).toFixed(1)} months`
+        },
+        markerWidth: 70
+      },
+      [PropertyAction.Rent]: {
+        formatShortValue (value: number): string {
+          return `${(value / 7).toFixed(1)} wks`
+        },
+        formatValue (value: number): string {
+          return `${(value / 7).toFixed(1)} weeks`
+        },
+        markerWidth: 70
+      }
     }
 
     return {
-      minDuration,
-      maxDuration,
-      step,
-      actionOptions,
-      numBedsOptions,
-      paginationOptions,
-      columns,
-
-      isLoading,
-      action,
-      numBeds,
-      durationRange,
-      includeBeyondDurationRange,
-      showDetailedTooltip,
-      tableFilter,
-
-      stationProperties,
-      markers,
-
-      formatSliderLabel,
-      formatShortDuration,
-      formatDuration,
-      search
+      statsGetter,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      sliderOptions,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      formatOptions
     }
   }
 })
 </script>
-
-<style lang="scss" scoped>
-.map {
-  height: 500px;
-}
-</style>
