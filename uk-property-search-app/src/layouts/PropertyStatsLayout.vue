@@ -15,9 +15,18 @@ q-page(padding)
     .col-shrink
       q-checkbox(v-model='includeBeyondRange' :label='`Include ${formatSliderLabel(currentSliderOption.max)}+`')
 
-  .row.q-my-sm
-    q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
-    q-checkbox(v-model='showDetailedTooltip' label='Show detailed tooltip')
+  .row.q-my-sm.justify-between.items-start
+    .row
+      q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
+      q-checkbox(v-model='showDetailedTooltip' label='Show detailed tooltip')
+    .row
+      q-expansion-item(v-model='advancedOptions.apply' label='Show advanced options' left-label color='blue')
+        .row.q-gutter-x-xs
+          q-input(label='Min samples' type='number' outlined
+                 v-model.number='advancedOptions.minSamples' style='width: 100px'
+                 :rules='[ val => val >= 0 || "Must be positive"]')
+          q-select(label='Tube lines' outlined multiple use-chips
+                  v-model='advancedOptions.tubeLines' :options='allTubeLines' style='width: 250px')
 
   leaflet-map.map(:markers='markers')
 
@@ -66,6 +75,12 @@ interface FormatOption {
 
 export type FormatOptions = {
   [action in PropertyAction]: FormatOption
+}
+
+interface AdvancedOptions {
+  apply: boolean
+  minSamples: number
+  tubeLines: string[]
 }
 
 interface Props {
@@ -133,6 +148,13 @@ export default defineComponent({
     const stationProperties: Ref<StationProperty[]> = ref([])
     const markers: Ref<L.Layer[]> = ref([])
 
+    const advancedOptions: Ref<AdvancedOptions> = ref({
+      apply: false,
+      minSamples: 5,
+      tubeLines: []
+    })
+
+    const allTubeLines: ComputedRef<string[]> = computed(() => tubeStore.allLines)
     const allStationProperties: ComputedRef<StationProperty[]> = computed(() => {
       return propertyStore.properties.map(property => {
         const station: TubeStation = tubeStore.postcodeToStations[property.postcode]
@@ -163,6 +185,15 @@ export default defineComponent({
       const isValid = (stationProperty: StationProperty) => statsGetter(stationProperty.property).count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
+      const matchesAdvancedOptions = (stationProperty: StationProperty) => {
+        if (advancedOptions.value.apply) {
+          const count = stationProperty.property.stats.price.count
+          const lines = stationProperty.station.lines
+          return count >= advancedOptions.value.minSamples &&
+              lines.some(line => advancedOptions.value.tubeLines.includes(line))
+        }
+        return true
+      }
       const withinSliderRange = (stationProperty: StationProperty) => {
         const median = statsGetter(stationProperty.property).median
         const multiplier = currentSliderOption.value.multiplier
@@ -178,6 +209,7 @@ export default defineComponent({
         .filter(hasAction)
         .filter(withinSliderRange)
         .filter(isValid)
+        .filter(matchesAdvancedOptions)
 
       await sleep(100)
       markers.value = updateMarkers()
@@ -251,6 +283,7 @@ export default defineComponent({
       numBedsOptions,
       paginationOptions,
       columns,
+      allTubeLines,
 
       isLoading,
       action,
@@ -260,6 +293,7 @@ export default defineComponent({
       showDetailedTooltip,
       tableFilter,
       currentSliderOption,
+      advancedOptions,
 
       stationProperties,
       markers,
