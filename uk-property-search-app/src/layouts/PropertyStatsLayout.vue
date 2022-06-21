@@ -27,6 +27,8 @@ q-page(padding)
                  :rules='[ val => val >= 0 || "Must be positive"]')
           q-select(label='Tube lines' outlined multiple use-chips
                   v-model='advancedOptions.tubeLines' :options='allTubeLines' style='width: 250px')
+          q-select(label='Zones' outlined multiple use-chips
+                  v-model='advancedOptions.zones' :options='zoneOptions' style='width: 250px')
 
   leaflet-map.map(:markers='markers')
 
@@ -42,6 +44,7 @@ q-page(padding)
 <script lang="ts">
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
+import { range } from 'lodash'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, defineComponent, ref } from 'vue'
 import { PropertyAction, PropertySummary, Stats } from '../models/property'
@@ -81,6 +84,7 @@ interface AdvancedOptions {
   apply: boolean
   minSamples: number
   tubeLines: string[]
+  zones: number[]
 }
 
 interface Props {
@@ -132,6 +136,7 @@ export default defineComponent({
     const paginationOptions = {
       rowsPerPage: 100
     }
+    const zoneOptions = range(1, 10)
 
     const isLoading: Ref<boolean> = ref(false)
     const action: Ref<{label: string, value: PropertyAction}> = ref(actionOptions[0])
@@ -151,7 +156,8 @@ export default defineComponent({
     const advancedOptions: Ref<AdvancedOptions> = ref({
       apply: false,
       minSamples: 5,
-      tubeLines: []
+      tubeLines: [],
+      zones: []
     })
 
     const allTubeLines: ComputedRef<string[]> = computed(() => tubeStore.allLines)
@@ -182,6 +188,10 @@ export default defineComponent({
     ]
 
     async function search () {
+      // Only if advanced options are enabled
+      const selectedLines = new Set(advancedOptions.value.tubeLines)
+      const selectedZones = new Set(advancedOptions.value.zones)
+
       const isValid = (stationProperty: StationProperty) => statsGetter(stationProperty.property).count > 0
       const hasAction = (stationProperty: StationProperty) => stationProperty.property.action === action.value.value
       const hasBeds = (stationProperty: StationProperty) => stationProperty.property.numBeds === numBeds.value
@@ -189,8 +199,10 @@ export default defineComponent({
         if (advancedOptions.value.apply) {
           const count = stationProperty.property.stats.price.count
           const lines = stationProperty.station.lines
+          const zones = stationProperty.station.zone
           return count >= advancedOptions.value.minSamples &&
-              lines.some(line => advancedOptions.value.tubeLines.includes(line))
+              (!selectedLines.size || lines.some(line => selectedLines.has(line))) &&
+              (!selectedZones.size || zones.some(zone => selectedZones.has(zone)))
         }
         return true
       }
@@ -282,6 +294,7 @@ export default defineComponent({
       actionOptions,
       numBedsOptions,
       paginationOptions,
+      zoneOptions,
       columns,
       allTubeLines,
 
