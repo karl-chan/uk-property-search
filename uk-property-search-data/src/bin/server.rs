@@ -1,7 +1,6 @@
 #[path = "../lib/mod.rs"]
 mod lib;
 
-use brotli2::read::BrotliEncoder;
 use flate2::{read::GzEncoder, Compression};
 use lib::property::property::PropertySummary;
 use lib::school::School;
@@ -73,17 +72,6 @@ impl Fairing for Compressor {
 
     async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
         if request
-            .headers()
-            .get("Accept-Encoding")
-            .any(|e| e.to_lowercase().contains("br"))
-        {
-            let body_bytes = response.body_mut().to_bytes().await.unwrap();
-            let mut encoder = BrotliEncoder::new(&body_bytes[..], 1);
-            let mut buf = Vec::with_capacity(body_bytes.len());
-            let size_read = encoder.read_to_end(&mut buf).unwrap();
-            response.set_sized_body(size_read, Cursor::new(buf));
-            response.set_raw_header("Content-Encoding", "br");
-        } else if request
             .headers()
             .get("Accept-Encoding")
             .any(|e| e.to_lowercase().contains("gzip"))
