@@ -265,7 +265,7 @@ impl Rightmove {
                     }),
                 transacted: property.display_status == "Let agreed"
                     || property.display_status == "Sold STC"
-                    || property.display_status == "Under Offer",
+                    || property.display_status == "Under offer",
             })
             .collect();
         Ok(properties)
