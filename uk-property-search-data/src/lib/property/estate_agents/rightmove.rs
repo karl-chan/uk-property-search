@@ -263,18 +263,29 @@ impl Rightmove {
                             .map(|date| parse_date(&date)),
                         _ => None,
                     }),
-                transacted: property.display_status == "Sold STC"
-                    || property.display_status == "Let agreed",
+                transacted: property.display_status == "Let agreed"
+                    || property.display_status == "Sold STC"
+                    || property.display_status == "Under Offer",
             })
             .collect();
         Ok(properties)
     }
 
     pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
+        let percent_transacted_value = if properties.is_empty() {
+            0f64
+        } else {
+            (properties.iter().filter(|p| p.transacted).count() as f64) / (properties.len() as f64)
+        };
+
         let prices = properties.iter().map(|p| p.price).collect_vec();
         let listed_days = properties
             .iter()
             .map(|p| (Utc::now() - p.post_date).num_days() as f64)
+            .collect_vec();
+        let percent_transacted = properties
+            .iter()
+            .map(|_| percent_transacted_value)
             .collect_vec();
         let square_feet = properties
             .iter()
@@ -284,6 +295,7 @@ impl Rightmove {
         PropertyStats {
             price: Stats::from_vec(&prices),
             listed_days: Stats::from_vec(&listed_days),
+            percent_transacted: Stats::from_vec(&percent_transacted),
             square_feet: Stats::from_vec(&square_feet),
         }
     }

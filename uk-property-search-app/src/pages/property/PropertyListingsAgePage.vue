@@ -13,7 +13,7 @@ import { defineComponent } from 'vue'
 import { PropertyAction, PropertySummary, Stats } from '../../models/property'
 
 export default defineComponent({
-  name: 'PropertyTurnoverPage',
+  name: 'PropertyListingsAgePage',
   components: {
     PropertyStatsLayout
   },

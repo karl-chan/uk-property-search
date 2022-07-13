@@ -43,8 +43,13 @@ export default defineComponent({
           },
           {
             icon: 'timer',
-            label: 'Turnover',
-            link: '/property/turnover'
+            label: 'Listings Age',
+            link: '/property/listings-age'
+          },
+          {
+            icon: 'star',
+            label: 'Popularity',
+            link: '/property/popularity'
           }
         ]
       }, {
