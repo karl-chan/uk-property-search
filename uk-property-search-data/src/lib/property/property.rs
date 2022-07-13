@@ -12,6 +12,7 @@ pub enum PropertyAction {
 pub struct PropertyStats {
     pub price: Stats,
     pub listed_days: Stats, // how long the advert has been on the market
+    pub percent_transacted: Stats, // percentage of properties "Let Agreed" / "Sold STC" / "Under Offer"
     pub square_feet: Stats,
 }
 
