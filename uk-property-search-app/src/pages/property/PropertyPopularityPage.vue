@@ -25,19 +25,19 @@ export default defineComponent({
       step: 1,
       multiplier: 1 / 100,
       formatter (value: number): string {
-        return `${value} %`
+        return `${value}%`
       }
     }
     function formatShortValue (value: number): string {
-      return `${round(value * 100)} %`
+      return `${round(value * 100)}%`
     }
     function formatValue (value: number): string {
-      return `${round(value * 100)} %`
+      return `${round(value * 100)}%`
     }
     const formatOption = {
       formatShortValue,
       formatValue,
-      markerWidth: 60
+      markerWidth: 40
     }
 
     function statsGetter (property:PropertySummary): Stats {
