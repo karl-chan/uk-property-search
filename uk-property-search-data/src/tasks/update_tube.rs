@@ -2,8 +2,9 @@ use std::collections::HashSet;
 
 use crate::lib::{tube::TubeStation, util::globals::Globals};
 use anyhow::Result;
+use chrono::Utc;
 use itertools::{multizip, Itertools};
-use mongodb::bson::doc;
+use mongodb::{bson::doc, options::FindOneAndUpdateOptions};
 use polars::{io::SerReader, prelude::CsvReader};
 
 pub async fn update_tube(globals: &Globals) -> Result<()> {
@@ -66,6 +67,16 @@ pub async fn update_tube(globals: &Globals) -> Result<()> {
         .db
         .tube()
         .insert_many_with_session(tube_stations, None, &mut session)
+        .await?;
+    globals
+        .db
+        .last_updated()
+        .find_one_and_update_with_session(
+            doc! {},
+            doc! {"$set": {"tube":  Utc::now().timestamp_millis() }},
+            FindOneAndUpdateOptions::builder().upsert(true).build(),
+            &mut session,
+        )
         .await?;
     session.commit_transaction().await?;
 

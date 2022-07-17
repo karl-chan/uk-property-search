@@ -8,10 +8,11 @@ use crate::lib::{
     util::globals::Globals,
 };
 use anyhow::Result;
+use chrono::Utc;
 use futures::{future::join_all, TryFutureExt};
 use itertools::iproduct;
 use log::info;
-use mongodb::bson::doc;
+use mongodb::{bson::doc, options::FindOneAndUpdateOptions};
 
 // Only consider Studio - 3 bedroom flats
 const MAX_BEDS: u32 = 3;
@@ -83,6 +84,16 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
         .db
         .property()
         .insert_many_with_session(all_property_summary, None, &mut session)
+        .await?;
+    globals
+        .db
+        .last_updated()
+        .find_one_and_update_with_session(
+            doc! {},
+            doc! {"$set": {"property":  Utc::now().timestamp_millis() }},
+            FindOneAndUpdateOptions::builder().upsert(true).build(),
+            &mut session,
+        )
         .await?;
     session.commit_transaction().await?;
 

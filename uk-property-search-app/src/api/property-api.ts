@@ -1,4 +1,3 @@
-
 import { PropertySummary } from '../models/property'
 import api from './api'
 
