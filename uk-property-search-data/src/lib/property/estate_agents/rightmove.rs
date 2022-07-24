@@ -178,6 +178,8 @@ impl Rightmove {
                 ),
                 ("areaSizeUnit", "sqft"),
                 ("currencyCode", "GBP"),
+                ("dontShow", "retirement"),
+                ("dontShow", "sharedOwnership"),
             ];
             // Sometimes rightmove returns 400, so we allow retries.
             let mut remaining_tries = 3;
