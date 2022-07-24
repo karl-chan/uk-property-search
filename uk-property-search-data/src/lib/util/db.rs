@@ -1,6 +1,7 @@
 use super::properties::Properties;
 use crate::lib::{property::property::PropertySummary, school::School, tube::TubeStation};
 use mongodb::{options::ClientOptions, Client, Collection, Database};
+use serde::{Deserialize, Serialize};
 
 pub struct Db {
     pub client: Client,
@@ -30,6 +31,17 @@ impl Db {
     pub fn tube(&self) -> Collection<TubeStation> {
         self.database.collection("tube")
     }
+
+    pub fn last_updated(&self) -> Collection<LastUpdated> {
+        self.database.collection("last_updated")
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LastUpdated {
+    pub property: Option<i64>, // unix milliseconds
+    pub schools: Option<i64>,  // unix milliseconds
+    pub tube: Option<i64>,     // unix milliseconds
 }
 
 #[cfg(test)]

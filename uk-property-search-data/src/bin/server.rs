@@ -5,7 +5,7 @@ use flate2::{read::GzEncoder, Compression};
 use lib::property::property::PropertySummary;
 use lib::school::School;
 use lib::tube::TubeStation;
-use lib::util::{ext::MongoCollectionExt, globals::Globals};
+use lib::util::{db::LastUpdated, ext::MongoCollectionExt, globals::Globals};
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::fs::FileServer;
 use rocket::serde::json::Json;
@@ -36,6 +36,19 @@ async fn schools(state: &State<Globals>) -> Json<Vec<School>> {
     Json(schools)
 }
 
+#[get("/last-updated")]
+async fn last_updated(state: &State<Globals>) -> Json<LastUpdated> {
+    let maybe_last_updated = state.inner().db.last_updated().find_to_vec().await;
+    match &maybe_last_updated[..] {
+        [last_updated] => Json(last_updated.to_owned()),
+        _ => Json(LastUpdated {
+            property: None,
+            schools: None,
+            tube: None,
+        }),
+    }
+}
+
 #[launch]
 async fn rocket() -> _ {
     let globals = Globals::new().await;
@@ -54,7 +67,10 @@ async fn rocket() -> _ {
 
     rocket::custom(&config)
         .manage(globals)
-        .mount("/api", routes![property, tube_stations, schools])
+        .mount(
+            "/api",
+            routes![property, tube_stations, schools, last_updated],
+        )
         .mount("/", FileServer::from("../uk-property-search-app/dist/pwa"))
         .attach(Compressor)
 }

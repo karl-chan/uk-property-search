@@ -151,14 +151,21 @@ impl Rightmove {
             radius: f64,
             pagination_index: u32,
         ) -> Result<SearchResponse> {
+            const NUM_PROPERTIES_PER_PAGE: u32 = 24;
             let url = "https://www.rightmove.co.uk/api/_search";
             let query = &[
                 ("locationIdentifier", location_identifier),
                 ("maxBedrooms", &num_beds.to_string()),
                 ("minBedrooms", &num_beds.to_string()),
-                ("numberOfPropertiesPerPage", "24"),
+                (
+                    "numberOfPropertiesPerPage",
+                    &NUM_PROPERTIES_PER_PAGE.to_string(),
+                ),
                 ("radius", &radius.to_string()),
-                ("index", &pagination_index.to_string()),
+                (
+                    "index",
+                    &(pagination_index * NUM_PROPERTIES_PER_PAGE).to_string(),
+                ),
                 ("includeSSTC", "true"),
                 ("includeLetAgreed", "true"),
                 ("viewType", "LIST"),
@@ -247,6 +254,8 @@ impl Rightmove {
             .chain(more_responses.unwrap_all().into_iter())
             .flat_map(|r| r.properties.into_iter())
             .filter(|property| !is_blacklisted(property))
+            .sorted_by_key(|property| property.id)
+            .dedup_by(|p1, p2| p1.id == p2.id)
             .map(|property| RightmoveProperty {
                 id: property.id,
                 coordinates: (property.location.longitude, property.location.latitude),
@@ -305,6 +314,7 @@ impl Rightmove {
 mod tests {
     use super::{PropertyAction, Rightmove};
     use crate::lib::util::globals::Globals;
+    use itertools::Itertools;
     use more_asserts::{assert_gt, assert_lt};
 
     #[tokio::test]
@@ -312,10 +322,10 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let location_identifier = rightmove
-            .get_location_identifier("SW1A 2AA".to_owned())
+            .get_location_identifier("N1 9AL".to_owned())
             .await
             .unwrap();
-        assert_eq!(location_identifier, "POSTCODE^1246000");
+        assert_eq!(location_identifier, "POSTCODE^544984");
     }
 
     #[tokio::test]
@@ -323,10 +333,24 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let properties = rightmove
-            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
+            .search("POSTCODE^544984".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
         assert_gt!(properties.len(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_search_no_duplicates() {
+        let globals = Globals::new().await;
+        let rightmove = Rightmove::new(&globals);
+        let properties = rightmove
+            .search("POSTCODE^544984".to_owned(), PropertyAction::Buy, 2, 0.25)
+            .await
+            .unwrap();
+        assert_eq!(
+            properties.iter().map(|p| p.id).sorted().dedup().count(),
+            properties.len()
+        );
     }
 
     #[tokio::test]
@@ -334,11 +358,11 @@ mod tests {
         let globals = Globals::new().await;
         let rightmove = Rightmove::new(&globals);
         let properties = rightmove
-            .search("POSTCODE^1246000".to_owned(), PropertyAction::Buy, 2, 0.25)
+            .search("POSTCODE^544984".to_owned(), PropertyAction::Buy, 2, 0.25)
             .await
             .unwrap();
         let stats = rightmove.to_stats(properties);
-        assert_lt!(stats.price.min, 1_000_000.0);
-        assert_gt!(stats.price.max, 5_000_000.0);
+        assert_lt!(stats.price.min, 600_000.0);
+        assert_gt!(stats.price.max, 2_000_000.0);
     }
 }

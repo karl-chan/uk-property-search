@@ -8,7 +8,9 @@ q-layout(view='hHh Lpr lFr')
     q-scroll-area.fit
       q-list
         template(v-for='menuSection in menuList' :key='menuSection.section')
-          q-item-label.text-grey-8(header) {{menuSection.section}}
+          .row.justify-between.items-center
+            q-item-label.text-grey-8(header) {{menuSection.section}}
+            q-badge {{formatLastUpdated(menuSection.lastUpdated)}}
           template(v-for='(menuItem, index) in menuSection.children' :key='index')
             q-item(:to='menuItem.link' exact)
               q-item-section(avatar)
@@ -21,13 +23,17 @@ q-layout(view='hHh Lpr lFr')
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { date } from 'quasar'
+import { computed, defineComponent, ref } from 'vue'
+import { useLastUpdatedStore } from '../stores/last-updated'
 
 export default defineComponent({
   name: 'MainLayout',
   setup () {
+    const lastUpdatedStore = useLastUpdatedStore()
+
     const leftDrawerOpen = ref(false)
-    const menuList = [
+    const menuList = computed(() => [
       {
         section: 'Property',
         children: [
@@ -51,21 +57,37 @@ export default defineComponent({
             label: 'Popularity',
             link: '/property/popularity'
           }
-        ]
+        ],
+        lastUpdated: lastUpdatedStore.lastUpdated.property
       }, {
         section: 'Schools',
-        children: [{
-          icon: 'school',
-          label: 'Ratings',
-          link: '/schools'
-        }
-        ]
+        children: [
+          {
+            icon: 'school',
+            label: 'Ratings',
+            link: '/schools'
+          }
+        ],
+        lastUpdated: lastUpdatedStore.lastUpdated.schools
       }
-    ]
+    ])
+
+    function formatLastUpdated (lastUpdatedMs: number | undefined) : string {
+      if (!lastUpdatedMs) {
+        return 'Missing data'
+      }
+      const diffDays = date.getDateDiff(new Date(), lastUpdatedMs, 'days')
+      switch (diffDays) {
+      case 0: return 'Last updated today'
+      case 1: return 'Last updated yesterday'
+      default: return `Last updated ${diffDays} days ago`
+      }
+    }
 
     return {
       leftDrawerOpen,
       menuList,
+      formatLastUpdated,
       toggleLeftDrawer () {
         leftDrawerOpen.value = !leftDrawerOpen.value
       }
