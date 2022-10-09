@@ -69,6 +69,16 @@ export default defineComponent({
           }
         ],
         lastUpdated: lastUpdatedStore.lastUpdated.schools
+      }, {
+        section: 'Crimes',
+        children: [
+          {
+            icon: 'crisis_alert',
+            label: 'Crimes',
+            link: '/crimes'
+          }
+        ],
+        lastUpdated: new Date()
       }
     ])
 

@@ -23,7 +23,8 @@ export default defineComponent({
       default: () => []
     }
   },
-  setup (props) {
+  emits: ['onBoundsChanged'],
+  setup (props, { emit }) {
     const { coordinates, zoom, markers } = toRefs(props)
     const mapId = ref(generateMapId())
     let map : L.Map | undefined
@@ -35,6 +36,9 @@ export default defineComponent({
         zoom: zoom.value,
         markers: markers.value
       })
+      onBoundsChanged()
+
+      map.on('moveend', onBoundsChanged)
     })
 
     watch(coordinates, () => {
@@ -61,6 +65,14 @@ export default defineComponent({
         addMarkers.forEach(marker => marker.addTo(map!))
       }
     })
+
+    function onBoundsChanged () {
+      const newBounds = {
+        center: map?.getCenter(),
+        bounds: map?.getBounds()
+      }
+      emit('onBoundsChanged', newBounds)
+    }
 
     return {
       mapId
