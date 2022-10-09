@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'property/listings-age', component: () => import('src/pages/property/PropertyListingsAgePage.vue') },
       { path: 'property/popularity', component: () => import('src/pages/property/PropertyPopularityPage.vue') },
       { path: 'schools', component: () => import('src/pages/SchoolsPage.vue') },
+      { path: 'crimes', component: () => import('src/pages/CrimesPage.vue') },
       { path: '', redirect: '/property/prices' }
     ]
   },
