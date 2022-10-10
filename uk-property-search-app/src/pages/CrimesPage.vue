@@ -10,6 +10,10 @@ q-page(padding)
     .col-3
       q-select(v-model='crimesFilter' :options='crimesFilterOptions' label='Crimes filter' multiple use-chips)
 
+  .row.q-my-sm.justify-between.items-start
+    .row
+      q-btn(label='Search' color='secondary' icon-right='search' @click='search' :loading='isLoading')
+
   leaflet-map.map(:markers='markers' @onBoundsChanged='onMapBoundsChanged')
 
 </template>
@@ -19,7 +23,7 @@ import axios from 'axios'
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
 import { fromPairs } from 'lodash'
-import { date, debounce, useQuasar } from 'quasar'
+import { date, useQuasar } from 'quasar'
 import type { Ref } from 'vue'
 import { defineComponent, ref, watch } from 'vue'
 import { Crime } from '../models/crime'
@@ -39,6 +43,7 @@ export default defineComponent({
 
     const sliderValue: Ref<number> = ref(twoMonthsAgoSliderValue)
 
+    const isLoading: Ref<boolean> = ref(false)
     const crimesFilter: Ref<{label: string, value: string}[]> = ref([])
     const markers: Ref<L.Layer[]> = ref([])
 
@@ -89,10 +94,14 @@ export default defineComponent({
       const url = `https://data.police.uk/api/crimes-street/all-crime?date=${yearMonth}&poly=${polyString}`
 
       try {
+        isLoading.value = true
+
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const { data } = await axios.get(url)
         crimes = data as Crime[]
         updateMarkers()
+
+        isLoading.value = false
 
         if (dismissNotifyWarning) {
           dismissNotifyWarning()
@@ -103,10 +112,9 @@ export default defineComponent({
           message: 'Couldn\'t load data because the area is too large. Please zoom in.',
           color: 'red'
         })
+        isLoading.value = false
       }
     }
-
-    const debouncedSearch = debounce(search, 500)
 
     function updateMarkers () {
       const markerCluster = L.markerClusterGroup()
@@ -130,12 +138,10 @@ export default defineComponent({
       <br>${crimeMonth}`
     }
 
-    async function onMapBoundsChanged (newBounds: object) {
+    function onMapBoundsChanged (newBounds: object) {
       currentMapBounds = newBounds
-      await debouncedSearch()
     }
 
-    watch(sliderValue, debouncedSearch)
     watch(crimesFilter, updateMarkers)
 
     return {
@@ -143,6 +149,7 @@ export default defineComponent({
       todaySliderValue: twoMonthsAgoSliderValue,
       crimesFilterOptions,
 
+      isLoading,
       sliderValue,
       crimesFilter,
 
@@ -150,7 +157,8 @@ export default defineComponent({
       markers,
 
       formatSliderLabel,
-      onMapBoundsChanged
+      onMapBoundsChanged,
+      search
     }
   }
 })
