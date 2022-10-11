@@ -2,11 +2,12 @@
 q-page(padding)
   .row.q-col-gutter-x-lg.items-end
     .col-grow
-      q-slider(v-model='sliderValue' label-always markers
+      q-range(v-model='sliderRange' label-always markers
               :min='threeYearsAgoSliderValue'
-              :max='todaySliderValue'
+              :max='twoMonthsAgoSliderValue'
               :step='1'
-              :label-value='formatSliderLabel(sliderValue)')
+              :left-label-value='formatSliderLabel(sliderRange.min)'
+              :right-label-value='formatSliderLabel(sliderRange.max)')
     .col-3
       q-select(v-model='crimesFilter' :options='crimesFilterOptions' label='Crimes filter' multiple use-chips)
 
@@ -22,7 +23,7 @@ q-page(padding)
 import axios from 'axios'
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
-import { fromPairs } from 'lodash'
+import { debounce, fromPairs, range } from 'lodash'
 import { date, useQuasar } from 'quasar'
 import type { Ref } from 'vue'
 import { defineComponent, ref, watch } from 'vue'
@@ -41,7 +42,10 @@ export default defineComponent({
     const twoMonthsAgoSliderValue = twoMonthsAgo.getFullYear() * 12 + twoMonthsAgo.getMonth()
     const threeYearsAgoSliderValue = threeYearsAgo.getFullYear() * 12 + threeYearsAgo.getMonth()
 
-    const sliderValue: Ref<number> = ref(twoMonthsAgoSliderValue)
+    const sliderRange: Ref<{min: number, max:number}> = ref({
+      min: twoMonthsAgoSliderValue,
+      max: twoMonthsAgoSliderValue
+    })
 
     const isLoading: Ref<boolean> = ref(false)
     const crimesFilter: Ref<{label: string, value: string}[]> = ref([])
@@ -69,9 +73,9 @@ export default defineComponent({
     let crimes: Crime[] = []
     let dismissNotifyWarning : (() => void) | null = null
 
-    function formatSliderLabel (sliderValue: number): string {
-      const year = Math.floor(sliderValue / 12)
-      const month = sliderValue % 12
+    function formatSliderLabel (sliderRange: number): string {
+      const year = Math.floor(sliderRange / 12)
+      const month = sliderRange % 12
       return date.formatDate(new Date(year, month), 'MMM YYYY')
     }
 
@@ -85,20 +89,25 @@ export default defineComponent({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { lat: swLat, lng: swLng } = _southWest
 
-      const year = Math.floor(sliderValue.value / 12)
-      const month = sliderValue.value % 12 + 1 // This is passed to URL, not new Date(), so we need to +1.
-      const yearMonth = `${year}-${String(month).padStart(2, '0')}`
-
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      const polyString = `${neLat},${neLng}:${neLat},${swLng}:${swLat},${swLng}:${swLat},${neLng}`
-      const url = `https://data.police.uk/api/crimes-street/all-crime?date=${yearMonth}&poly=${polyString}`
+      const urls = range(sliderRange.value.min, sliderRange.value.max + 1)
+        .map(sliderValue => {
+          const year = Math.floor(sliderValue / 12)
+          const month = sliderValue % 12 + 1 // This is passed to URL, not new Date(), so we need to +1.
+          const yearMonth = `${year}-${String(month).padStart(2, '0')}`
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          const polyString = `${neLat},${neLng}:${neLat},${swLng}:${swLat},${swLng}:${swLat},${neLng}`
+          return `https://data.police.uk/api/crimes-street/all-crime?date=${yearMonth}&poly=${polyString}`
+        })
 
       try {
         isLoading.value = true
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { data } = await axios.get(url)
-        crimes = data as Crime[]
+        const results = await Promise.all(urls.map(url => axios.get(url)))
+        crimes = results.flatMap(result => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          const { data } = result
+          return data as Crime[]
+        })
         updateMarkers()
 
         isLoading.value = false
@@ -142,15 +151,16 @@ export default defineComponent({
       currentMapBounds = newBounds
     }
 
-    watch(crimesFilter, updateMarkers)
+    const debouncedUpdateMarkers = debounce(updateMarkers, 2000)
+    watch(crimesFilter, debouncedUpdateMarkers)
 
     return {
       threeYearsAgoSliderValue,
-      todaySliderValue: twoMonthsAgoSliderValue,
+      twoMonthsAgoSliderValue,
       crimesFilterOptions,
 
       isLoading,
-      sliderValue,
+      sliderRange,
       crimesFilter,
 
       crimes,
