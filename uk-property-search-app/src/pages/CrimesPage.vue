@@ -133,7 +133,7 @@ export default defineComponent({
     }
 
     function updateMarkers () {
-      const markerCluster = L.markerClusterGroup({ chunkedLoading: true })
+      const markerCluster = L.markerClusterGroup()
       const crimesSet = new Set(crimesFilter.value.map(e => e.value))
       crimes.filter(crime => !crimesSet.size || crimesSet.has(crime.category))
         .forEach(crime =>
