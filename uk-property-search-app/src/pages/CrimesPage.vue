@@ -23,7 +23,7 @@ q-page(padding)
 import axios from 'axios'
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
-import { debounce, fromPairs, range } from 'lodash'
+import { chunk, debounce, fromPairs, range } from 'lodash'
 import { date, useQuasar } from 'quasar'
 import type { Ref } from 'vue'
 import { defineComponent, ref, watch } from 'vue'
@@ -102,12 +102,19 @@ export default defineComponent({
       try {
         isLoading.value = true
 
-        const results = await Promise.all(urls.map(url => axios.get(url)))
-        crimes = results.flatMap(result => {
+        const crimesBuffer: Crime[] = []
+        const urlBatches = chunk(urls, 8) // Send requests in batches of N to work around 429 http error (too many requests)
+        for (const urlBatch of urlBatches) {
+          const results = await Promise.all(urlBatch.map(url => axios.get(url)))
+          const crimes = results.flatMap(result => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          const { data } = result
-          return data as Crime[]
-        })
+            const { data } = result
+            return data as Crime[]
+          })
+          crimesBuffer.push(...crimes)
+        }
+        crimes = crimesBuffer
+
         updateMarkers()
 
         isLoading.value = false
@@ -126,7 +133,7 @@ export default defineComponent({
     }
 
     function updateMarkers () {
-      const markerCluster = L.markerClusterGroup()
+      const markerCluster = L.markerClusterGroup({ chunkedLoading: true })
       const crimesSet = new Set(crimesFilter.value.map(e => e.value))
       crimes.filter(crime => !crimesSet.size || crimesSet.has(crime.category))
         .forEach(crime =>
