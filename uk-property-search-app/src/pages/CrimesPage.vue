@@ -43,7 +43,7 @@ export default defineComponent({
     const threeYearsAgoSliderValue = threeYearsAgo.getFullYear() * 12 + threeYearsAgo.getMonth()
 
     const sliderRange: Ref<{min: number, max:number}> = ref({
-      min: twoMonthsAgoSliderValue,
+      min: threeYearsAgoSliderValue,
       max: twoMonthsAgoSliderValue
     })
 

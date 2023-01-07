@@ -217,7 +217,7 @@ impl Rightmove {
             maybe_display_size.and_then(|display_size| {
                 RE.captures(&display_size)
                     .map(|caps| caps.get(1).unwrap())
-                    .map(|m| m.as_str().replace(",", "").parse::<i32>().unwrap())
+                    .and_then(|m| m.as_str().replace(",", "").parse::<i32>().ok())
             })
         }
 
