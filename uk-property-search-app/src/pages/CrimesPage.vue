@@ -23,11 +23,12 @@ q-page(padding)
 import axios from 'axios'
 import LeafletMap from 'components/LeafletMap.vue'
 import L from 'leaflet'
-import { chunk, debounce, fromPairs, range } from 'lodash'
-import { date, useQuasar } from 'quasar'
+import { chunk, debounce, fromPairs, range, round } from 'lodash'
+import { date, QNotifyUpdateOptions, useQuasar } from 'quasar'
 import type { Ref } from 'vue'
 import { defineComponent, ref, watch } from 'vue'
 import { Crime } from '../models/crime'
+import { sleep } from '../util/sleep'
 
 export default defineComponent({
   label: 'CrimesPage',
@@ -71,7 +72,6 @@ export default defineComponent({
 
     let currentMapBounds: object|null = null
     let crimes: Crime[] = []
-    let dismissNotifyWarning : (() => void) | null = null
 
     function formatSliderLabel (sliderRange: number): string {
       const year = Math.floor(sliderRange / 12)
@@ -81,13 +81,22 @@ export default defineComponent({
 
     async function search () {
       // @ts-ignore
-      const { bounds } = currentMapBounds
+      const { bounds, zoom } = currentMapBounds
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { _northEast, _southWest } = bounds
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { lat: neLat, lng: neLng } = _northEast
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { lat: swLat, lng: swLng } = _southWest
+
+      if (zoom <= 14) {
+        $q.notify({
+          message: 'The current map selection is too large. Please zoom in.',
+          color: 'red',
+          timeout: 1000 // 1s
+        })
+        return
+      }
 
       const urls = range(sliderRange.value.min, sliderRange.value.max + 1)
         .map(sliderValue => {
@@ -99,13 +108,53 @@ export default defineComponent({
           return `https://data.police.uk/api/crimes-street/all-crime?date=${yearMonth}&poly=${polyString}`
         })
 
+      function formatProgress (counter: number): string {
+        return `${counter} / ${urls.length} (${round(counter / urls.length * 100)}%)`
+      }
+
+      const cancellationToken = new AbortController()
+      let searchProgressNotification: ((props?: QNotifyUpdateOptions | undefined) => void) | null = null
       try {
         isLoading.value = true
 
+        let progressCounter = 0
+        searchProgressNotification = $q.notify({
+          group: false, // required to be updatable
+          timeout: 0, // we want to be in control when it gets dismissed
+          spinner: true,
+          message: 'Getting data...',
+          caption: formatProgress(0),
+          actions: [
+            {
+              label: 'Cancel',
+              color: 'red',
+              handler: () => {
+                cancellationToken.abort()
+                if (searchProgressNotification) {
+                  searchProgressNotification() // Dismiss programmatically
+                }
+                throw new Error()
+              }
+            }
+          ]
+        })
+
         const crimesBuffer: Crime[] = []
         const urlBatches = chunk(urls, 8) // Send requests in batches of N to work around 429 http error (too many requests)
+
         for (const urlBatch of urlBatches) {
-          const results = await Promise.all(urlBatch.map(url => axios.get(url)))
+          const results = await Promise.all(urlBatch.map(url => axios
+            .get(url, {
+              signal: cancellationToken.signal
+            })
+            .finally(() => {
+              if (searchProgressNotification) {
+                searchProgressNotification({
+                  caption: formatProgress(++progressCounter)
+                })
+              }
+            })
+          ))
           const crimes = results.flatMap(result => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const { data } = result
@@ -115,19 +164,31 @@ export default defineComponent({
         }
         crimes = crimesBuffer
 
-        updateMarkers()
-
-        isLoading.value = false
-
-        if (dismissNotifyWarning) {
-          dismissNotifyWarning()
-          dismissNotifyWarning = null
-        }
-      } catch (err) {
-        dismissNotifyWarning = $q.notify({
-          message: 'Couldn\'t load data because the area is too large. Please zoom in.',
-          color: 'red'
+        searchProgressNotification({
+          icon: 'pin_drop',
+          spinner: false, // we reset the spinner setting so the icon can be displayed
+          message: 'Rendering results...',
+          actions: []
         })
+        await sleep(100)
+
+        updateMarkers()
+        searchProgressNotification({
+          icon: 'done',
+          message: 'Done!',
+          timeout: 2500 // 2.5s
+        })
+        isLoading.value = false
+      } catch (err) {
+        if (!cancellationToken.signal.aborted) {
+          $q.notify({
+            message: 'Failed to get data. Please wait a few seconds and retry...',
+            color: 'red'
+          })
+        }
+        if (searchProgressNotification) {
+          searchProgressNotification() // Dismiss programmatically
+        }
         isLoading.value = false
       }
     }
