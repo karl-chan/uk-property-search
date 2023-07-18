@@ -1,4 +1,3 @@
-
 import { defineStore } from 'pinia'
 import lastUpdatedApi from '../api/last-updated-api'
 import { LastUpdated } from '../models/last-updated'
