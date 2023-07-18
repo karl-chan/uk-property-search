@@ -69,7 +69,8 @@ export default defineComponent({
     function onBoundsChanged () {
       const newBounds = {
         center: map?.getCenter(),
-        bounds: map?.getBounds()
+        bounds: map?.getBounds(),
+        zoom: map?.getZoom()
       }
       emit('onBoundsChanged', newBounds)
     }

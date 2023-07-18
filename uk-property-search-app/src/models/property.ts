@@ -1,4 +1,3 @@
-
 export enum PropertyAction {
   Buy = 1,
   Rent = 2

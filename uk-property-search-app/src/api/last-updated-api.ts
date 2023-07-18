@@ -1,4 +1,3 @@
-
 import { LastUpdated } from '../models/last-updated'
 import api from './api'
 
