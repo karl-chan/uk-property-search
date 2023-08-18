@@ -3,10 +3,12 @@ use log::debug;
 use reqwest::{
     header::{HeaderMap, USER_AGENT},
     redirect::Policy,
-    IntoUrl, Response,
+    IntoUrl, Method, Response,
 };
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
+use serde::Serialize;
+use serde_json::Value;
 use std::fmt::Debug;
 use tokio::sync::Semaphore;
 
@@ -76,7 +78,8 @@ impl Http {
     }
 
     pub async fn get<U: IntoUrl + Debug>(&self, url: U) -> Result<Response, Error> {
-        self.get_with_options(url, &[], true).await
+        self.request(url, Method::GET, None, None, None::<&Value>, true)
+            .await
     }
 
     pub async fn get_with_options<U: IntoUrl + Debug>(
@@ -85,17 +88,65 @@ impl Http {
         query: &[(&str, &str)],
         follow_redirects: bool,
     ) -> Result<Response, Error> {
+        self.request(
+            url,
+            Method::GET,
+            Some(query),
+            None,
+            None::<&Value>,
+            follow_redirects,
+        )
+        .await
+    }
+
+    pub async fn post_with_form<U: IntoUrl + Debug>(
+        &self,
+        url: U,
+        form: &[(&str, &str)],
+    ) -> Result<Response, Error> {
+        self.request(url, Method::POST, None, Some(form), None::<&Value>, true)
+            .await
+    }
+
+    pub async fn post_with_json<U: IntoUrl + Debug, J: Serialize + ?Sized>(
+        &self,
+        url: U,
+        json: &J,
+    ) -> Result<Response, Error> {
+        self.request(url, Method::POST, None, None, Some(json), true)
+            .await
+    }
+
+    async fn request<U: IntoUrl + Debug, J: Serialize + ?Sized>(
+        &self,
+        url: U,
+        method: Method,
+        query: Option<&[(&str, &str)]>,
+        form: Option<&[(&str, &str)]>,
+        json: Option<&J>,
+        follow_redirects: bool,
+    ) -> Result<Response, Error> {
         let permit = self.semaphore.acquire().await.unwrap();
+        debug!(
+            "Sending [{:?}] request to url: [{:?}] and follow redirects: [{:?}]",
+            method, url, follow_redirects
+        );
         let client = if follow_redirects {
             &self.client
         } else {
             &self.no_redirect_client
         };
-        debug!(
-            "Sending GET request to url: [{:?}] with query: [{:?}] and follow redirects: [{:?}]",
-            &url, query, follow_redirects
-        );
-        let response = client.get(url).query(query).send().await;
+        let mut request = client.request(method, url);
+        if let Some(q) = query {
+            request = request.query(q);
+        }
+        if let Some(f) = form {
+            request = request.form(f);
+        }
+        if let Some(j) = json {
+            request = request.json(j);
+        }
+        let response = request.send().await;
         drop(permit);
         response
     }
@@ -108,6 +159,7 @@ mod tests {
     use futures::future::join_all;
     use itertools::Itertools;
     use reqwest::StatusCode;
+    use serde_json::Value;
 
     #[tokio::test]
     async fn test_get() {
@@ -159,5 +211,32 @@ mod tests {
         let http = Http::new(&globals, None);
         let response = http.get("https://bbc.co.uk/404").await.unwrap();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_post_with_form() {
+        let globals = Globals::new().await;
+        let http = Http::new(&globals, None);
+        let response = http
+            .post_with_form("https://httpbin.org/post", &[("myKey", "myValue")])
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.json::<Value>().await.unwrap()["form"]["myKey"],
+            "myValue"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_post_with_json() {
+        let globals = Globals::new().await;
+        let http = Http::new(&globals, None);
+        let response = http
+            .post_with_json("https://httpbin.org/post", "myString")
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.json::<Value>().await.unwrap()["json"], "myString");
     }
 }
