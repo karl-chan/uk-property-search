@@ -1,7 +1,7 @@
 use super::globals::Globals;
 use log::debug;
 use reqwest::{
-    header::{HeaderMap, USER_AGENT},
+    header::{HeaderMap, HeaderValue, REFERER, USER_AGENT},
     redirect::Policy,
     IntoUrl, Method, Response,
 };
@@ -21,6 +21,7 @@ pub struct Http {
 pub struct HttpOptions {
     pub max_parallel_connections: Option<usize>,
     pub max_retry_count: Option<u32>,
+    pub referer: Option<String>,
 }
 
 impl Http {
@@ -40,6 +41,10 @@ impl Http {
         let default_headers = {
             let mut headers = HeaderMap::new();
             headers.insert(USER_AGENT, "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36".parse().unwrap());
+            options
+                .as_ref()
+                .and_then(|o| o.referer.as_ref())
+                .map(|r| headers.insert(REFERER, HeaderValue::from_str(r).unwrap()));
             headers
         };
 
@@ -78,8 +83,15 @@ impl Http {
     }
 
     pub async fn get<U: IntoUrl + Debug>(&self, url: U) -> Result<Response, Error> {
-        self.request(url, Method::GET, None, None, None::<&Value>, true)
-            .await
+        self.request(
+            url,
+            Method::GET,
+            None,
+            None::<&[(&str, &str)]>,
+            None::<&Value>,
+            true,
+        )
+        .await
     }
 
     pub async fn get_with_options<U: IntoUrl + Debug>(
@@ -92,17 +104,17 @@ impl Http {
             url,
             Method::GET,
             Some(query),
-            None,
+            None::<&[(&str, &str)]>,
             None::<&Value>,
             follow_redirects,
         )
         .await
     }
 
-    pub async fn post_with_form<U: IntoUrl + Debug>(
+    pub async fn post_with_form<U: IntoUrl + Debug, F: Serialize + ?Sized>(
         &self,
         url: U,
-        form: &[(&str, &str)],
+        form: &F,
     ) -> Result<Response, Error> {
         self.request(url, Method::POST, None, Some(form), None::<&Value>, true)
             .await
@@ -113,16 +125,23 @@ impl Http {
         url: U,
         json: &J,
     ) -> Result<Response, Error> {
-        self.request(url, Method::POST, None, None, Some(json), true)
-            .await
+        self.request(
+            url,
+            Method::POST,
+            None,
+            None::<&[(&str, &str)]>,
+            Some(json),
+            true,
+        )
+        .await
     }
 
-    async fn request<U: IntoUrl + Debug, J: Serialize + ?Sized>(
+    async fn request<U: IntoUrl + Debug, F: Serialize + ?Sized, J: Serialize + ?Sized>(
         &self,
         url: U,
         method: Method,
         query: Option<&[(&str, &str)]>,
-        form: Option<&[(&str, &str)]>,
+        form: Option<&F>,
         json: Option<&J>,
         follow_redirects: bool,
     ) -> Result<Response, Error> {
@@ -178,6 +197,7 @@ mod tests {
             Some(HttpOptions {
                 max_parallel_connections: Some(5),
                 max_retry_count: None,
+                referer: None,
             }),
         );
         let futures = (0..20)

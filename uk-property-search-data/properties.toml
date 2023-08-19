@@ -1,6 +1,6 @@
 [db]
-mongo.uri = "mongodb+srv://uk-property-search:5HUA2zBnKnlUVhpt@cluster0.4kpiz.mongodb.net"
 mongo.name = "uk-property-search"
+mongo.uri = "mongodb+srv://uk-property-search:5HUA2zBnKnlUVhpt@cluster0.4kpiz.mongodb.net"
 
 [http]
 max.parallel.connections = 50
@@ -8,6 +8,9 @@ max.retry.count = 3
 
 [log]
 level = "info"
+
+[propertylog]
+max.parallel.connections = 5
 
 [rightmove]
 max.parallel.connections = 5

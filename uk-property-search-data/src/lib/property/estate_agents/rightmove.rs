@@ -45,6 +45,7 @@ impl Rightmove {
                             as usize,
                     ),
                     max_retry_count: None,
+                    referer: None,
                 }),
             ),
         }
