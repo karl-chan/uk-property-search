@@ -111,7 +111,7 @@ impl Http {
         .await
     }
 
-    pub async fn post_with_form<U: IntoUrl + Debug, F: Serialize + ?Sized>(
+    pub async fn post_with_form<U: IntoUrl + Debug, F: Serialize + ?Sized + Debug>(
         &self,
         url: U,
         form: &F,
@@ -120,7 +120,7 @@ impl Http {
             .await
     }
 
-    pub async fn post_with_json<U: IntoUrl + Debug, J: Serialize + ?Sized>(
+    pub async fn post_with_json<U: IntoUrl + Debug, J: Serialize + ?Sized + Debug>(
         &self,
         url: U,
         json: &J,
@@ -136,7 +136,11 @@ impl Http {
         .await
     }
 
-    async fn request<U: IntoUrl + Debug, F: Serialize + ?Sized, J: Serialize + ?Sized>(
+    async fn request<
+        U: IntoUrl + Debug,
+        F: Serialize + ?Sized + Debug,
+        J: Serialize + ?Sized + Debug,
+    >(
         &self,
         url: U,
         method: Method,
@@ -146,10 +150,8 @@ impl Http {
         follow_redirects: bool,
     ) -> Result<Response, Error> {
         let permit = self.semaphore.acquire().await.unwrap();
-        debug!(
-            "Sending [{:?}] request to url: [{:?}] and follow redirects: [{:?}]",
-            method, url, follow_redirects
-        );
+        let log_request_prefix =
+            self.prepare_log_request(&url, &method, &query, &form, &json, follow_redirects);
         let client = if follow_redirects {
             &self.client
         } else {
@@ -166,8 +168,49 @@ impl Http {
             request = request.json(j);
         }
         let response = request.send().await;
+        self.log_request(&log_request_prefix, &response.as_ref().unwrap());
         drop(permit);
         response
+    }
+
+    fn prepare_log_request<
+        U: IntoUrl + Debug,
+        F: Serialize + ?Sized + Debug,
+        J: Serialize + ?Sized + Debug,
+    >(
+        &self,
+        url: &U,
+        method: &Method,
+        query: &Option<&[(&str, &str)]>,
+        form: &Option<&F>,
+        json: &Option<&J>,
+        follow_redirects: bool,
+    ) -> String {
+        let optional_params = {
+            let mut parts = vec![];
+            if let Some(q) = query {
+                parts.push(format!("with query: [{:?}], ", q));
+            }
+            if let Some(f) = form {
+                parts.push(format!("with form: [{:?}], ", f));
+            }
+            if let Some(j) = json {
+                parts.push(format!("with json: [{:?}], ", j));
+            }
+            parts.concat()
+        };
+        format!(
+            "[{:?}] request to url: [{:?}] {}and follow redirects: [{:?}]",
+            method, url, optional_params, follow_redirects
+        )
+    }
+
+    fn log_request(&self, log_statement_prefix: &str, response: &Response) {
+        debug!(
+            "{} returned status code [{:?}].",
+            log_statement_prefix,
+            response.status()
+        );
     }
 }
 
