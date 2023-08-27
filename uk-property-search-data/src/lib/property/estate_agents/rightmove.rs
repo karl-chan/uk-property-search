@@ -1,6 +1,5 @@
 use crate::lib::{
-    math::stats::Stats,
-    property::property::{PropertyAction, PropertyStats},
+    property::property::PropertyAction,
     util::{
         ext::{DecodeJsonResponseExt, VecResultExt},
         globals::Globals,
@@ -23,13 +22,13 @@ pub struct Rightmove {
 
 #[derive(Debug, PartialEq)]
 pub struct RightmoveProperty {
-    id: u32,
-    coordinates: (f64, f64), // (longitude, latitude)
-    price: u32,              // total (if buy) / monthly (if rent)
-    square_feet: Option<i32>,
-    post_date: DateTime<Utc>,
-    reduced_date: Option<DateTime<Utc>>,
-    transacted: bool,
+    pub id: u32,
+    pub coordinates: (f64, f64), // (longitude, latitude)
+    pub price: u32,              // total (if buy) / monthly (if rent)
+    pub square_feet: Option<i32>,
+    pub post_date: DateTime<Utc>,
+    pub reduced_date: Option<DateTime<Utc>>,
+    pub transacted: bool,
 }
 
 impl Rightmove {
@@ -282,35 +281,6 @@ impl Rightmove {
             .collect();
         Ok(properties)
     }
-
-    pub fn to_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
-        let percent_transacted_value = if properties.is_empty() {
-            0f64
-        } else {
-            (properties.iter().filter(|p| p.transacted).count() as f64) / (properties.len() as f64)
-        };
-
-        let prices = properties.iter().map(|p| p.price).collect_vec();
-        let listed_days = properties
-            .iter()
-            .map(|p| (Utc::now() - p.post_date).num_days() as f64)
-            .collect_vec();
-        let percent_transacted = properties
-            .iter()
-            .map(|_| percent_transacted_value)
-            .collect_vec();
-        let square_feet = properties
-            .iter()
-            .filter_map(|p| p.square_feet)
-            .collect_vec();
-
-        PropertyStats {
-            price: Stats::from_vec(&prices),
-            listed_days: Stats::from_vec(&listed_days),
-            percent_transacted: Stats::from_vec(&percent_transacted),
-            square_feet: Stats::from_vec(&square_feet),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -318,7 +288,7 @@ mod tests {
     use super::{PropertyAction, Rightmove};
     use crate::lib::util::globals::Globals;
     use itertools::Itertools;
-    use more_asserts::{assert_gt, assert_lt};
+    use more_asserts::assert_gt;
 
     #[tokio::test]
     async fn test_get_location_identifier() {
@@ -354,18 +324,5 @@ mod tests {
             properties.iter().map(|p| p.id).sorted().dedup().count(),
             properties.len()
         );
-    }
-
-    #[tokio::test]
-    async fn test_get_stats() {
-        let globals = Globals::new().await;
-        let rightmove = Rightmove::new(&globals);
-        let properties = rightmove
-            .search("POSTCODE^544984".to_owned(), PropertyAction::Buy, 2, 0.25)
-            .await
-            .unwrap();
-        let stats = rightmove.to_stats(properties);
-        assert_lt!(stats.price.min, 600_000.0);
-        assert_gt!(stats.price.max, 2_000_000.0);
     }
 }

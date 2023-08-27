@@ -14,6 +14,7 @@ pub struct PropertyStats {
     pub listed_days: Stats, // how long the advert has been on the market
     pub percent_transacted: Stats, // percentage of properties "Let Agreed" / "Sold STC" / "Under offer"
     pub square_feet: Stats,
+    pub one_month_pct_change: Stats, // how much the prices changed in the last month (prorated)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

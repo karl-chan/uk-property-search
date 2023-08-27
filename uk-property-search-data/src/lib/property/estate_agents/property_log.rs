@@ -3,10 +3,11 @@ use crate::lib::util::{
     globals::Globals,
     http::{Http, HttpOptions},
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use log::warn;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -62,20 +63,24 @@ impl PropertyLog {
                 .and_utc()
         }
 
-        fn parse_price(price: &str) -> u32 {
+        fn parse_price(price: &str) -> Result<u32> {
             lazy_static! {
                 static ref RE: Regex = Regex::new(r"(([0-9]+),)*[0-9]+").unwrap();
             }
             RE.captures(&price)
-                .expect(&format!(
+                .context(format!(
                     "Failed to find comma-separated number in price: {price}"
-                ))
+                ))?
                 .get(0)
                 .unwrap()
                 .as_str()
                 .replace(",", "")
-                .parse()
-                .expect(&format!("Failed to parse price as integer: {price}"))
+                .parse::<u32>()
+                .context(format!("Failed to parse price as integer: {price}"))
+        }
+
+        if ids.is_empty() {
+            return Ok(vec![]);
         }
 
         let form = ids
@@ -101,9 +106,17 @@ impl PropertyLog {
                 let records = property
                     .prices
                     .into_iter()
-                    .map(|price| PropertyLogRecord {
-                        date: parse_date(&price.date),
-                        price: parse_price(&price.price),
+                    .filter_map(|price| {
+                        match (parse_date(&price.date), parse_price(&price.price)) {
+                            (date, Ok(p)) => Some(PropertyLogRecord {
+                                date: date,
+                                price: p,
+                            }),
+                            (_, Err(cause)) => {
+                                warn!("{}", cause);
+                                None
+                            }
+                        }
                     })
                     .sorted_by_key(|record| record.date)
                     .collect_vec();
@@ -134,6 +147,14 @@ mod tests {
         util::globals::Globals,
     };
     use chrono::{TimeZone, Utc};
+
+    #[tokio::test]
+    async fn test_get_history_empty() {
+        let globals = Globals::new().await;
+        let property_log = PropertyLog::new(&globals);
+        let history = property_log.get_history(vec![]).await.unwrap();
+        assert_eq!(history, vec![])
+    }
 
     #[tokio::test]
     async fn test_get_history() {
