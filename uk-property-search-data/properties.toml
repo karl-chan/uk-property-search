@@ -11,6 +11,9 @@ level = "info"
 
 [propertylog]
 max.parallel.connections = 5
+max.retry.count = 100
+retry.delay.seconds = 30
+user = "x2bgwbbphpjkxzkn"
 
 [rightmove]
 max.parallel.connections = 5

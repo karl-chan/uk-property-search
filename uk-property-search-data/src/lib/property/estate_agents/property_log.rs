@@ -10,10 +10,14 @@ use lazy_static::lazy_static;
 use log::warn;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::once, time::Duration};
+use tokio::time::sleep;
 
 pub struct PropertyLog {
     http: Http,
+    user: String,
+    max_retry_count: u32,
+    retry_delay: Duration,
 }
 
 impl PropertyLog {
@@ -31,6 +35,13 @@ impl PropertyLog {
                     max_retry_count: None,
                     referer: Some("https://www.rightmove.co.uk/".to_owned()),
                 }),
+            ),
+            user: globals.properties.get_string("propertylog.user"),
+            max_retry_count: globals.properties.get_int("propertylog.max.retry.count") as u32,
+            retry_delay: Duration::from_secs(
+                globals
+                    .properties
+                    .get_int("propertylog.retry.delay.seconds") as u64,
             ),
         }
     }
@@ -92,14 +103,37 @@ impl PropertyLog {
                     (format!("properties[{i}][price]"), "".to_owned()),
                 ]
             })
+            .chain(once(("user".to_owned(), self.user.to_owned())))
             .collect_vec();
-        let result: PropertiesResponse = self
-            .http
-            .post_with_form("https://api.propertylog.net/api/properties", &form)
-            .await?
-            .json_or_err()
-            .await?;
-        let histories = result
+        let mut retries_left = self.max_retry_count;
+        let response = loop {
+            let result: Result<PropertiesResponse> = self
+                .http
+                .post_with_form("https://api.propertylog.net/api/properties", &form)
+                .await?
+                .json_or_err(&format!("Property log query: [{:?}]", &form))
+                .await;
+            match result {
+                Ok(r) => break r,
+                Err(err) => {
+                    if retries_left > 0 {
+                        warn!(
+                            "{}\n{} attempts left, retrying in {} seconds...",
+                            err,
+                            retries_left,
+                            self.retry_delay.as_secs()
+                        );
+                        retries_left -= 1;
+                        sleep(self.retry_delay).await;
+                        continue;
+                    } else {
+                        warn!("Ran out of retries!");
+                        return Err(err);
+                    }
+                }
+            }
+        };
+        let histories = response
             .properties
             .into_iter()
             .map(|(id, property)| {

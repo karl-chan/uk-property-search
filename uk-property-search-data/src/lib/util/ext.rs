@@ -9,22 +9,23 @@ use rocket::serde::DeserializeOwned;
 /// Decode response as json, but print the response body on failure.
 #[async_trait]
 pub trait DecodeJsonResponseExt {
-    async fn json_or_err<T: DeserializeOwned>(self) -> Result<T>;
+    async fn json_or_err<T: DeserializeOwned>(self, context: &str) -> Result<T>;
 }
 
 #[async_trait]
 impl DecodeJsonResponseExt for Response {
-    async fn json_or_err<T: DeserializeOwned>(self) -> Result<T> {
+    async fn json_or_err<T: DeserializeOwned>(self, context: &str) -> Result<T> {
         let url = self.url().clone();
         let status_code = self.status().as_u16();
         let text = self.text().await?;
         serde_json::from_str(&text).map_err(|e| {
             anyhow!(
-                "{}\nURL:\n{}Status code:\n{}\nResponse body:\n{}",
+                "{}\nURL: {}\nStatus code: {}\nResponse body:\n{}\nContext: {}",
                 e,
                 url,
                 status_code,
-                &text
+                &text,
+                context,
             )
         })
     }

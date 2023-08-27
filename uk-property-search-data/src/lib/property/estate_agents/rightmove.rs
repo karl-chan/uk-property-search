@@ -188,7 +188,7 @@ impl Rightmove {
                     .http
                     .get_with_options(url, query, true)
                     .await?
-                    .json_or_err()
+                    .json_or_err(&format!("Rightmove query [{:?}]", &query))
                     .await;
                 remaining_tries = remaining_tries - 1;
 

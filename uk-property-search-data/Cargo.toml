@@ -27,7 +27,7 @@ serde_json = "1.0.82"
 simple_logger = "2.2.0"
 statrs = "0.15.0"
 stopwatch = "0.0.7"
-tokio = {version = "1.19.2", features = ["sync"]}
+tokio = {version = "1.19.2", features = ["sync", "time"]}
 
 [dev-dependencies]
 more-asserts = "0.3.0"
