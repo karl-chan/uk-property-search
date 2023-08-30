@@ -1,33 +1,33 @@
 [package]
+edition = "2021"
 name = "uk-property-search-data"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
 anyhow = "1.0.58"
 async-trait = "0.1.56"
-chrono = "0.4.19"
-clap = { version = "3.2.8", features = ["derive"] }
+chrono = "0.4.26"
+clap = {version = "3.2.8", features = ["derive"]}
 config = "0.13.1"
 flate2 = "1.0.24"
 futures = "0.3.21"
 itertools = "0.10.3"
 lazy_static = "1.4.0"
 log = "0.4.17"
-mongodb = { version = "2.2.2", features = ["bson-chrono-0_4"] }
+mongodb = {version = "2.2.2", features = ["bson-chrono-0_4"]}
 polars = "0.22.8"
 regex = "1.6.0"
-reqwest = { version = "0.11.11", features = ["json", "gzip", "brotli", "deflate"] }
+reqwest = {version = "0.11.11", features = ["json", "gzip", "brotli", "deflate"]}
 reqwest-middleware = "0.1.6"
 reqwest-retry = "0.1.5"
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
+rocket = {version = "0.5.0-rc.2", features = ["json"]}
 scraper = "0.13.0"
-serde = { version = "1.0.138", features = ["derive"] }
+serde = {version = "1.0.138", features = ["derive"]}
 serde_json = "1.0.82"
 simple_logger = "2.2.0"
 statrs = "0.15.0"
 stopwatch = "0.0.7"
-tokio = { version = "1.19.2", features = ["sync"] }
+tokio = {version = "1.19.2", features = ["sync", "time"]}
 
 [dev-dependencies]
 more-asserts = "0.3.0"

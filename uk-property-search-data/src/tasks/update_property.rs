@@ -1,6 +1,7 @@
 use crate::lib::{
     property::{
-        estate_agents::rightmove::Rightmove,
+        aggregator::PropertyAggregator,
+        estate_agents::{property_log::PropertyLog, rightmove::Rightmove},
         property::{PropertyAction, PropertySummary},
     },
     tube::TubeStation,
@@ -10,7 +11,7 @@ use crate::lib::{
 use anyhow::Result;
 use chrono::Utc;
 use futures::{future::join_all, TryFutureExt};
-use itertools::iproduct;
+use itertools::{iproduct, Itertools};
 use log::info;
 use mongodb::{bson::doc, options::FindOneAndUpdateOptions};
 
@@ -28,6 +29,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
     }
 
     let rightmove = Rightmove::new(&globals);
+    let property_log = PropertyLog::new(&globals);
 
     let tube_stations: Vec<TubeStation> = globals.db.tube().find_to_vec().await;
     let station_infos: Vec<StationInfo> = join_all(tube_stations.into_iter().map(|station| {
@@ -41,36 +43,56 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
     .await
     .unwrap_all();
 
+    async fn get_property_summary(
+        rightmove: &Rightmove,
+        property_log: &PropertyLog,
+        station_info: StationInfo,
+        action: PropertyAction,
+        num_beds: u32,
+        radius: f64,
+    ) -> PropertySummary {
+        let properties = rightmove
+            .search(station_info.location_identifier, action, num_beds, radius)
+            .await
+            .unwrap();
+        let histories = property_log
+            .get_history(properties.iter().map(|p| p.id).collect_vec())
+            .await
+            .unwrap();
+        let stats = PropertyAggregator::calculate_stats(properties, histories);
+        info!("Got property stats for station: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
+                station_info.station.name,
+                station_info.station.postcode,
+                action, num_beds, radius
+            );
+        PropertySummary {
+            postcode: station_info.station.postcode,
+            coordinates: station_info.station.coordinates,
+            action: action as u8,
+            num_beds,
+            stats,
+        }
+    }
+
     let all_property_summary = join_all(
         iproduct!(
-            [&rightmove],
             station_infos,
             [PropertyAction::Buy, PropertyAction::Rent],
-            0..(MAX_BEDS+1),
+            0..(MAX_BEDS + 1),
             [SEARCH_RADIUS]
         )
-        .map(|(rightmove, station_info, action, num_beds, radius)| {
-            rightmove
-                .search(station_info.location_identifier, action, num_beds, radius)
-                .map_ok(move |properties| {
-                    let stats = rightmove.to_stats(properties);
-                    info!("Got property stats for station: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
-                        station_info.station.name,
-                        station_info.station.postcode,
-                        action, num_beds, radius
-                    );
-                    PropertySummary {
-                        postcode: station_info.station.postcode,
-                        coordinates: station_info.station.coordinates,
-                        action: action as u8,
-                        num_beds,
-                        stats,
-                    }
-                })
+        .map(|(station_info, action, num_beds, radius)| {
+            get_property_summary(
+                &rightmove,
+                &property_log,
+                station_info,
+                action,
+                num_beds,
+                radius,
+            )
         }),
     )
-    .await
-    .unwrap_all();
+    .await;
 
     let mut session = globals.db.client.start_session(None).await?;
     session.start_transaction(None).await?;

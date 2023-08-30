@@ -36,7 +36,8 @@ pub async fn update_schools(globals: &Globals) -> Result<()> {
         date_string.map(|s| {
             chrono::NaiveDate::parse_from_str(s, "%d-%m-%Y")
                 .unwrap()
-                .and_hms(0, 0, 0)
+                .and_hms_opt(0, 0, 0)
+                .unwrap()
                 .timestamp_millis()
         })
     }
