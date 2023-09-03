@@ -7,13 +7,14 @@ pub enum PropertyAction {
     Rent = 2,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyStats {
     pub price: Stats,
     pub listed_days: Stats, // how long the advert has been on the market
     pub percent_transacted: Stats, // percentage of properties "Let Agreed" / "Sold STC" / "Under offer"
     pub square_feet: Stats,
+    pub rental_yield: Stats,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,13 +1,41 @@
+use std::cmp::min;
+
 use crate::lib::math::stats::Stats;
 
 use super::{estate_agents::rightmove::RightmoveProperty, property::PropertyStats};
 use chrono::Utc;
 use itertools::Itertools;
 
+pub struct BuyAndRentPropertyStats {
+    pub buy_stats: PropertyStats,
+    pub rent_stats: PropertyStats,
+}
+
 pub struct PropertyAggregator {}
 
 impl PropertyAggregator {
-    pub fn calculate_stats(properties: Vec<RightmoveProperty>) -> PropertyStats {
+    pub fn calculate_buy_and_rent_property_stats(
+        &self,
+        buy_properties: Vec<RightmoveProperty>,
+        rent_properties: Vec<RightmoveProperty>,
+    ) -> BuyAndRentPropertyStats {
+        let buy_stats = self.calculate_partial_stats(buy_properties);
+        let rent_stats = self.calculate_partial_stats(rent_properties);
+        let rental_yield = self.calculate_rental_yield(buy_stats, rent_stats);
+
+        BuyAndRentPropertyStats {
+            buy_stats: PropertyStats {
+                rental_yield: rental_yield,
+                ..buy_stats
+            },
+            rent_stats: PropertyStats {
+                rental_yield: rental_yield,
+                ..rent_stats
+            },
+        }
+    }
+
+    fn calculate_partial_stats(&self, properties: Vec<RightmoveProperty>) -> PropertyStats {
         let percent_transacted_value = if properties.is_empty() {
             0f64
         } else {
@@ -33,6 +61,18 @@ impl PropertyAggregator {
             listed_days: Stats::from_vec(&listed_days),
             percent_transacted: Stats::from_vec(&percent_transacted),
             square_feet: Stats::from_vec(&square_feet),
+            rental_yield: Stats::nan(),
+        }
+    }
+
+    fn calculate_rental_yield(&self, buy_stats: PropertyStats, rent_stats: PropertyStats) -> Stats {
+        Stats {
+            min: rent_stats.price.min * 12.0 / buy_stats.price.min,
+            q1: rent_stats.price.q1 * 12.0 / buy_stats.price.q1,
+            median: rent_stats.price.median * 12.0 / buy_stats.price.median,
+            q3: rent_stats.price.q3 * 12.0 / buy_stats.price.q3,
+            max: rent_stats.price.max * 12.0 / buy_stats.price.max,
+            count: min(rent_stats.price.count, buy_stats.price.count),
         }
     }
 }
@@ -47,6 +87,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_stats() {
+        let aggregator = PropertyAggregator {};
         let properties = vec![
             RightmoveProperty {
                 id: 105233438,
@@ -77,7 +118,7 @@ mod tests {
             },
         ];
 
-        let stats = PropertyAggregator::calculate_stats(properties);
+        let stats = aggregator.calculate_partial_stats(properties);
 
         assert_eq!(
             stats.price,
