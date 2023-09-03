@@ -82,6 +82,7 @@ impl Http {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn get<U: IntoUrl + Debug>(&self, url: U) -> Result<Response, Error> {
         self.request(
             url,
@@ -94,6 +95,7 @@ impl Http {
         .await
     }
 
+    #[allow(dead_code)]
     pub async fn get_with_options<U: IntoUrl + Debug>(
         &self,
         url: U,
@@ -111,6 +113,7 @@ impl Http {
         .await
     }
 
+    #[allow(dead_code)]
     pub async fn post_with_form<U: IntoUrl + Debug, F: Serialize + ?Sized + Debug>(
         &self,
         url: U,
@@ -120,6 +123,7 @@ impl Http {
             .await
     }
 
+    #[allow(dead_code)]
     pub async fn post_with_json<U: IntoUrl + Debug, J: Serialize + ?Sized + Debug>(
         &self,
         url: U,

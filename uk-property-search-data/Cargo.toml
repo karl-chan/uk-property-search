@@ -31,3 +31,11 @@ tokio = {version = "1.19.2", features = ["sync", "time"]}
 
 [dev-dependencies]
 more-asserts = "0.3.0"
+
+[[bin]]
+name = "uk-property-search-data"
+path = "src/main.rs"
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"

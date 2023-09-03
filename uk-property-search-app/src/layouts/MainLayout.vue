@@ -56,6 +56,11 @@ export default defineComponent({
             icon: 'star',
             label: 'Popularity',
             link: '/property/popularity'
+          },
+          {
+            icon: 'trending_up',
+            label: 'Rental yield',
+            link: '/property/yield'
           }
         ],
         lastUpdated: lastUpdatedStore.lastUpdated.property

@@ -20,6 +20,7 @@ pub struct PropertyLog {
     retry_delay: Duration,
 }
 
+#[allow(dead_code)]
 impl PropertyLog {
     pub fn new(globals: &Globals) -> PropertyLog {
         PropertyLog {

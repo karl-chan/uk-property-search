@@ -1,6 +1,8 @@
+use std::f64::NAN;
+
 use serde::{Deserialize, Serialize};
 use statrs::statistics::{Data, Max, Median, Min, OrderStatistics};
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Stats {
     pub min: f64,
     pub q1: f64,
@@ -20,6 +22,17 @@ impl Stats {
             q3: data.upper_quartile(),
             max: data.max(),
             count: data.len(),
+        }
+    }
+
+    pub fn nan() -> Stats {
+        Stats {
+            min: NAN,
+            q1: NAN,
+            median: NAN,
+            q3: NAN,
+            max: NAN,
+            count: 0,
         }
     }
 }
