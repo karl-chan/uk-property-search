@@ -32,7 +32,7 @@ export default defineComponent({
       return `${round(value)} sf`
     }
     function formatValue (value: number): string {
-      return `${value} sq. ft.`
+      return `${round(value)} sq. ft.`
     }
     const formatOption = {
       formatShortValue,
