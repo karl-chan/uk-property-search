@@ -17,6 +17,7 @@ export interface PropertyStats {
   listedDays: Stats,
   percentTransacted: Stats,
   squareFeet: Stats,
+  rentalYield: Stats
 }
 
 export interface PropertySummary {
