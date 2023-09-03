@@ -1,7 +1,7 @@
 use crate::lib::{
     property::{
         aggregator::PropertyAggregator,
-        estate_agents::{property_log::PropertyLog, rightmove::Rightmove},
+        estate_agents::rightmove::Rightmove,
         property::{PropertyAction, PropertySummary},
     },
     tube::TubeStation,
@@ -11,7 +11,7 @@ use crate::lib::{
 use anyhow::Result;
 use chrono::Utc;
 use futures::{future::join_all, TryFutureExt};
-use itertools::{iproduct, Itertools};
+use itertools::iproduct;
 use log::info;
 use mongodb::{bson::doc, options::FindOneAndUpdateOptions};
 
@@ -29,7 +29,6 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
     }
 
     let rightmove = Rightmove::new(&globals);
-    let property_log = PropertyLog::new(&globals);
 
     let tube_stations: Vec<TubeStation> = globals.db.tube().find_to_vec().await;
     let station_infos: Vec<StationInfo> = join_all(tube_stations.into_iter().map(|station| {
@@ -45,7 +44,6 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
 
     async fn get_property_summary(
         rightmove: &Rightmove,
-        property_log: &PropertyLog,
         station_info: StationInfo,
         action: PropertyAction,
         num_beds: u32,
@@ -55,11 +53,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
             .search(station_info.location_identifier, action, num_beds, radius)
             .await
             .unwrap();
-        let histories = property_log
-            .get_history(properties.iter().map(|p| p.id).collect_vec())
-            .await
-            .unwrap();
-        let stats = PropertyAggregator::calculate_stats(properties, histories);
+        let stats = PropertyAggregator::calculate_stats(properties);
         info!("Got property stats for station: [{:?}], postcode: [{:?}] action: [{:?}] num beds: [{:?}] radius: [{:?}]",
                 station_info.station.name,
                 station_info.station.postcode,
@@ -82,14 +76,7 @@ pub async fn update_property(globals: &Globals) -> Result<()> {
             [SEARCH_RADIUS]
         )
         .map(|(station_info, action, num_beds, radius)| {
-            get_property_summary(
-                &rightmove,
-                &property_log,
-                station_info,
-                action,
-                num_beds,
-                radius,
-            )
+            get_property_summary(&rightmove, station_info, action, num_beds, radius)
         }),
     )
     .await;
