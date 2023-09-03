@@ -171,11 +171,11 @@ export default defineComponent({
     const columns = [
       { name: 'station', label: 'Station', field: (row: StationProperty) => row.station.name, sortable: true, align: 'left' },
       { name: 'zone', label: 'Zone', field: (row: StationProperty) => row.station.zone, format: (zones: number[]) => zones.join(','), sortable: true, sort: sortZones },
-      { name: 'median', label: 'Median', field: (row: StationProperty) => statsGetter(row.property).median, format: formatValue, sortable: true },
       { name: 'min', label: 'Min', field: (row: StationProperty) => statsGetter(row.property).min, format: formatValue, sortable: true },
-      { name: 'max', label: 'Max', field: (row: StationProperty) => statsGetter(row.property).max, format: formatValue, sortable: true },
       { name: 'q1', label: 'Q1', field: (row: StationProperty) => statsGetter(row.property).q1, format: formatValue, sortable: true },
+      { name: 'median', label: 'Median', field: (row: StationProperty) => statsGetter(row.property).median, format: formatValue, sortable: true },
       { name: 'q3', label: 'Q3', field: (row: StationProperty) => statsGetter(row.property).q3, format: formatValue, sortable: true },
+      { name: 'max', label: 'Max', field: (row: StationProperty) => statsGetter(row.property).max, format: formatValue, sortable: true },
       { name: 'count', label: 'Count', field: (row: StationProperty) => statsGetter(row.property).count, sortable: true },
       {
         name: 'lines',
